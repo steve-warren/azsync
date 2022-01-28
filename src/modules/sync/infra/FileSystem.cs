@@ -17,7 +17,7 @@ public class FileSystem : IFileSystem
         {
             var info = new FileInfo(file);
 
-            yield return new LocalFile(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName));
+            yield return new LocalFile(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length);
         }
     }
 }

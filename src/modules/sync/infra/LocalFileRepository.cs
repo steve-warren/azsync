@@ -1,5 +1,8 @@
 namespace azsync;
 
+using System.Data.Common;
+using Microsoft.EntityFrameworkCore;
+
 public class LocalFileRepository : ILocalFileRepository
 {
     private readonly SyncDbContext _context;
@@ -8,7 +11,64 @@ public class LocalFileRepository : ILocalFileRepository
     {
         _context = context;
     }
-    public void Add(LocalFile file) => _context.Add(file);
+
+    public void ReplaceAll(IEnumerable<LocalFile> files)
+    {
+        var connection = _context.Database.GetDbConnection();
+
+        try
+        {
+            connection.Open();
+
+            CreateTempTable(connection);
+
+            using var transaction = connection.BeginTransaction();
+            using var sqlCommand = connection.CreateCommand();
+            sqlCommand.CommandText = @"
+                INSERT INTO LocalFile(Path, Name, PathHash, FileSizeInBytes, LastModified)
+                VALUES($Path, $Name, $PathHash, $FileSizeInBytes, $LastModified)";
+            
+            var path = sqlCommand.CreateParameter();
+            path.ParameterName = "$Path";
+            sqlCommand.Parameters.Add(path);
+            
+            var name = sqlCommand.CreateParameter();
+            name.ParameterName = "$Name";
+            sqlCommand.Parameters.Add(name);
+
+            var hash = sqlCommand.CreateParameter();
+            hash.ParameterName = "$PathHash";
+            sqlCommand.Parameters.Add(hash);
+
+            var size = sqlCommand.CreateParameter();
+            size.ParameterName = "$FileSizeInBytes";
+            sqlCommand.Parameters.Add(size);
+
+            var modified = sqlCommand.CreateParameter();
+            modified.ParameterName = "$LastModified";
+            sqlCommand.Parameters.Add(modified);
+
+            sqlCommand.Prepare();
+
+            foreach(var file in files)
+            {
+                path.Value = file.Path;
+                name.Value = file.Name;
+                hash.Value = file.PathHash;
+                size.Value = file.FileSizeInBytes;
+                modified.Value = file.LastModified;
+
+                sqlCommand.ExecuteNonQuery();
+            }
+
+            transaction.Commit();
+        }
+
+        finally
+        {
+            connection.Close();
+        }
+    }
 
     public IQueryable<LocalFile> GetNewLocalFiles()
     {
@@ -18,5 +78,25 @@ public class LocalFileRepository : ILocalFileRepository
                     select lf;
         
         return query;
+    }
+
+    private static void CreateTempTable(DbConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = @"
+        PRAGMA temp_store=MEMORY;PRAGMA temp_store;
+        DROP TABLE IF EXISTS LocalFile;
+        CREATE TEMP TABLE IF NOT EXISTS LocalFile
+        (
+            Id INTEGER NOT NULL,
+            Path VARCHAR(256) NOT NULL,
+            Name VARCHAR(256) NOT NULL,
+            PathHash VARCHAR(32) NOT NULL,
+            FileSizeInBytes INT NOT NULL,
+            LastModified DATETIME NOT NULL,
+            PRIMARY KEY('Id' AUTOINCREMENT)
+        )";
+
+        command.ExecuteNonQuery();
     }
 }

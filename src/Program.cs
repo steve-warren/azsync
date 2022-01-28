@@ -26,7 +26,6 @@ app.OnExecute(() => {
         using var context = new SyncDbContext();
         var handler = new CaptureLocalFilesHandler(
             new FileSystem(new Md5HashAlgorithm()),
-            new SyncUnitOfWork(context),
             new LocalFileRepository(context));
 
         try
@@ -36,6 +35,7 @@ app.OnExecute(() => {
             var f = new LocalFileRepository(context).GetNewLocalFiles().Count();
 
             Console.WriteLine(f);
+            Console.WriteLine(w.ElapsedMilliseconds + " ms");
         }
 
         catch(Exception ex)
