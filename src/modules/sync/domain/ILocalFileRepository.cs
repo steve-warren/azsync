@@ -11,5 +11,5 @@ public interface ILocalFileRepository
     /// Returns LocalFile entities that have not been synched.
     /// </summary>
     /// <returns></returns>
-    IQueryable<LocalFile> GetNewLocalFiles();
+    IQueryable<LocalFile> GetUntrackedFiles();
 }

@@ -6,43 +6,53 @@ app.Name = "azsync";
 app.HelpOption("-?|-h|--help");
 
 app.Command("sync", (command) =>
-    {
-        command.Description = "";
-        command.HelpOption("-?|-h|--help");
+{
+    command.Description = "";
+    command.HelpOption("-?|-h|--help");
 
-        var locationArgument = command.Argument("[location]",
-                                   "Where the ninja should hide.");
+    var locationArgument = command.Argument("[location]",
+                                "Where the ninja should hide.");
 
-        command.OnExecute(() =>
-            {
-                return 0;
-            });
-    });
-
-app.OnExecute(() => {
-        var c = new CaptureLocalFiles("/Users/stevewarren/src", int.MaxValue);
-
-        var w = System.Diagnostics.Stopwatch.StartNew();
-        using var context = new SyncDbContext();
-        var handler = new CaptureLocalFilesHandler(
-            new FileSystem(new Md5HashAlgorithm()),
-            new LocalFileRepository(context));
-
-        try
-        {        
-            handler.Handle(c);
-
-            var f = new LocalFileRepository(context).GetNewLocalFiles().Count();
-
-            Console.WriteLine(f);
-            Console.WriteLine(w.ElapsedMilliseconds + " ms");
-        }
-
-        catch(Exception ex)
+    command.OnExecute(() =>
         {
-            Console.WriteLine(ex.Message);
-        }
+            try
+            {        
+                using var context = new SyncDbContext();
+                
+                var c1 = new CreateLocalFileSnapshot("/Users/stevewarren/src/azsync", int.MaxValue);
+                var h1 = new CreateLocalFileSnapshotHandler(
+                    new FileSystem(new Md5HashAlgorithm()),
+                    new LocalFileRepository(context));
+
+                var c2 = new TrackNewFiles();
+                var h2 = new TrackNewFilesHandler(new LocalFileRepository(context), new SyncFileRepository(context), context);
+
+                h1.Handle(c1);
+                h2.Handle(c2);
+            }
+        
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+
+            return 0;
+        });
+});
+
+app.Command("auth", (command) =>
+{
+    command.OnExecute(() =>
+    {
         return 0;
     });
+});
+
+app.OnExecute(() =>
+{
+    Console.WriteLine("auth");
+
+    return 0;
+});
 
 app.Execute(args);

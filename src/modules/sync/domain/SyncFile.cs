@@ -3,21 +3,22 @@ namespace azsync;
 public class SyncFile
 {
     private SyncFile() { }
-    public SyncFile(int id, string name, string localFilePath, string localFilePathHash, DateTime lastModified)
+    public SyncFile(string name, string localFilePath, string localFilePathHash, DateTime lastModified, long fileSizeInBytes)
     {
-        Id = id;
         Name = name;
         LocalFilePath = localFilePath;
         LocalFilePathHash = localFilePathHash;
         LastModified = lastModified;
-        State = "NotSynced";
+        FileSizeInBytes = fileSizeInBytes;
+        State = "Tracked";
     }
 
-    public int Id { get; }
-    public string Name { get; }
-    public string LocalFilePath { get; }
-    public string LocalFilePathHash { get; }
-    public string RemoteFilePath { get; }
-    public DateTime LastModified { get; }
-    public string State { get; }
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string LocalFilePath { get; set; }
+    public string LocalFilePathHash { get; set; }
+    public string? RemoteFilePath { get; set; }
+    public DateTime LastModified { get; set; }
+    public long FileSizeInBytes { get; set; }
+    public string State { get; set; }
 }
