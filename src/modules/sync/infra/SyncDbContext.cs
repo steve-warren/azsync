@@ -7,10 +7,11 @@ public class SyncDbContext : DbContext, IUnitOfWork
 {
     public DbSet<LocalFile> LocalFiles { get; set; }
     public DbSet<SyncFile> SyncFiles { get; set; }
+    public DbSet<ConfigurationSetting> ConfigurationSettings { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
-        options.UseSqlite($"Data Source=hello.db");
+        options.UseSqlite($"Data Source=../hello.db");
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -25,6 +26,10 @@ public class SyncDbContext : DbContext, IUnitOfWork
         modelBuilder.Entity<SyncFile>()
                     .ToTable("SyncFile")
                     .HasKey("Id");
+
+        modelBuilder.Entity<ConfigurationSetting>()
+                    .ToTable("ConfigurationSetting")
+                    .HasKey("Key");
     }
 
     void IUnitOfWork.SaveChanges()

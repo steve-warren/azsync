@@ -5,20 +5,20 @@ namespace azsync;
 /// </summary>
 /// <param name="DirectoryPath">The path to the directory.</param>
 /// <param name="MaxRecursionDepth"></param>
-public record CreateLocalFileSnapshot(string DirectoryPath, int MaxRecursionDepth) : ICommand { }
+public record CaptureLocalDirectory(string DirectoryPath, int MaxRecursionDepth) : ICommand { }
 
-public class CreateLocalFileSnapshotHandler : ICommandHandler<CreateLocalFileSnapshot>
+public class CaptureLocalDirectoryHandler : ICommandHandler<CaptureLocalDirectory>
 {
     private readonly IFileSystem _fs;
     private readonly ILocalFileRepository _localFileRepository;
 
-    public CreateLocalFileSnapshotHandler(IFileSystem fileSystem, ILocalFileRepository localFileRepository)
+    public CaptureLocalDirectoryHandler(IFileSystem fileSystem, ILocalFileRepository localFileRepository)
     {
         _fs = fileSystem;
         _localFileRepository = localFileRepository;
     }
 
-    public void Handle(CreateLocalFileSnapshot command)
+    public void Handle(CaptureLocalDirectory command)
     {
         var files = _fs.GetFilesInDirectory(directoryPath: command.DirectoryPath, maxRecursionDepth: command.MaxRecursionDepth);
 

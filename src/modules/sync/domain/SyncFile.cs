@@ -20,5 +20,22 @@ public class SyncFile
     public string? RemoteFilePath { get; set; }
     public DateTime LastModified { get; set; }
     public long FileSizeInBytes { get; set; }
+    public string ContentHash { get; set; }
     public string State { get; set; }
+
+    public void SetContentHash(string contentHash) => ContentHash = contentHash;
+
+    public void Upload(string blobContentHash)
+    {
+        if (string.Equals(blobContentHash, ContentHash, StringComparison.OrdinalIgnoreCase) is false)
+            State = "BadHash";
+
+        else        
+            State = "Uploaded";
+    }
+
+    public void NotFound()
+    {
+        State = "NotFound";
+    }
 }

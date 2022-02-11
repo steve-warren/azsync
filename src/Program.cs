@@ -1,4 +1,7 @@
-﻿using azsync;
+﻿using System.Diagnostics;
+using azsync;
+using Azure.Identity;
+using Azure.Storage.Blobs;
 using Microsoft.Extensions.CommandLineUtils;
 
 var app = new CommandLineApplication();
@@ -10,8 +13,8 @@ app.Command("sync", (command) =>
     command.Description = "";
     command.HelpOption("-?|-h|--help");
 
-    var locationArgument = command.Argument("[location]",
-                                "Where the ninja should hide.");
+    var locationArgument = command.Argument("[path]",
+                                "An absolute or relative path to the directory to sync.");
 
     command.OnExecute(() =>
         {
@@ -19,8 +22,8 @@ app.Command("sync", (command) =>
             {        
                 using var context = new SyncDbContext();
                 
-                var c1 = new CreateLocalFileSnapshot("/Users/stevewarren/src/azsync", int.MaxValue);
-                var h1 = new CreateLocalFileSnapshotHandler(
+                var c1 = new CaptureLocalDirectory(locationArgument.Value, int.MaxValue);
+                var h1 = new CaptureLocalDirectoryHandler(
                     new FileSystem(new Md5HashAlgorithm()),
                     new LocalFileRepository(context));
 
@@ -40,17 +43,80 @@ app.Command("sync", (command) =>
         });
 });
 
-app.Command("auth", (command) =>
+app.Command("login", (command) =>
 {
-    command.OnExecute(() =>
+    command.Description = "Log in to Azure.";
+
+    var tenantOption = command.Option("-t|--tenant <tenantId>", "The Azure Active Directory tenant (directory) Id of the service principal.", CommandOptionType.SingleValue);
+    var clientOption = command.Option("-c|--client <clientId>", "The client (application) Id of the service principal.", CommandOptionType.SingleValue);
+    var clientSecret = command.Option("-s|--secret <secret>", "A client secret that was generated for the App Registration used to authenticate the client.", CommandOptionType.SingleValue);
+
+    command.HelpOption("-?|-h|--help");
+
+    command.OnExecute(async () =>
     {
+        var command = new Login(Tenant: tenantOption.Value(), Client: clientOption.Value(), Secret: clientSecret.Value());
+        using var context = new SyncDbContext();
+        
+        var handler = new LoginHandler(new ConfigurationSettingRepository(context), context);
+        await handler.Handle(command);
+
         return 0;
     });
 });
 
-app.OnExecute(() =>
+app.Command("logout", (command) =>
 {
-    Console.WriteLine("auth");
+    command.Description = "Logs the application out of Azure.";
+
+    command.OnExecute(async () =>
+    {
+        using var context = new SyncDbContext();
+        var handler = new LogoutHandler(new ConfigurationSettingRepository(context), context);
+        await handler.Handle(new Logout());
+
+        return 0;
+    });
+});
+
+app.OnExecute(async () =>
+{
+    var serviceClient = new BlobServiceClient(new Uri(""), null);
+
+    var name = DateTime.Now.Millisecond.ToString();
+
+    await serviceClient.CreateBlobContainerAsync(name);
+    var containerClient = serviceClient.GetBlobContainerClient(name);
+
+    using var context = new SyncDbContext();
+
+    var watch = Stopwatch.StartNew();
+    await foreach(var file in context.SyncFiles.AsAsyncEnumerable())
+    {
+        try
+        {
+            Console.WriteLine(file.Name);
+            using var fileStream = new FileStream(path: file.LocalFilePath, mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read, bufferSize: 4096, useAsync: true);
+
+            file.SetContentHash(await new Md5HashAlgorithm().ComputeHashAsync(fileStream));
+            fileStream.Seek(0, SeekOrigin.Begin);
+
+            var blob = await containerClient.UploadBlobAsync(file.LocalFilePath, fileStream);
+
+            file.Upload(Convert.ToBase64String(blob.Value.ContentHash));
+
+            await context.SaveChangesAsync();
+        }
+
+        catch (FileNotFoundException)
+        {
+            file.NotFound();
+            
+            await context.SaveChangesAsync();
+        }
+    }
+
+    Console.WriteLine(watch.ElapsedMilliseconds);
 
     return 0;
 });
