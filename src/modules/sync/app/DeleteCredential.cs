@@ -4,20 +4,20 @@ using Microsoft.Identity.Client;
 
 namespace azsync;
 
-public record RemoveCredential(string Name) : ICommand { }
+public record DeleteCredential(string Name) : ICommand { }
 
-public class RemoveCredentialHandler : IAsyncCommandHandler<RemoveCredential>
+public class DeleteCredentialHandler : IAsyncCommandHandler<DeleteCredential>
 {
     private readonly IAzureCredentialRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public RemoveCredentialHandler(IAzureCredentialRepository repository, IUnitOfWork unitOfWork)
+    public DeleteCredentialHandler(IAzureCredentialRepository repository, IUnitOfWork unitOfWork)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
     }
 
-    public async Task Handle(RemoveCredential command)
+    public async Task Handle(DeleteCredential command)
     {
         var credential = await _repository.GetByNameAsync(command.Name);
 

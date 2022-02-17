@@ -45,7 +45,7 @@ app.Command("sync", (command) =>
 
 app.Command("add", (command) =>
 {
-    command.Command("credentials", (command) =>
+    command.Command("credential", (command) =>
     {
         var tenantOption = command.Option("-t|--tenant <tenantId>", "The Azure Active Directory tenant (directory) Id of the service principal.", CommandOptionType.SingleValue);
         var clientOption = command.Option("-c|--client <clientId>", "The client (application) Id of the service principal.", CommandOptionType.SingleValue);
@@ -110,13 +110,22 @@ app.Command("list", (command) =>
     });
 });
 
-app.Command("logout", (command) =>
+app.Command("delete", (command) =>
 {
-    command.Description = "Logs the application out of Azure.";
-
-    command.OnExecute(async () =>
+    command.Command("credential", (command) =>
     {
-        return 0;
+        command.HelpOption("-?|-h|--help");
+        var credentialName = command.Argument("[name]", "The name of the credential to delete.");
+        
+        command.OnExecute(async () =>
+        {
+            using var context = new SyncDbContext();
+
+            var handler = new DeleteCredentialHandler(new AzureCredentialRepository(context), context);
+            await handler.Handle(new DeleteCredential(Name: credentialName.Value));
+
+            return 0;
+        });
     });
 });
 
