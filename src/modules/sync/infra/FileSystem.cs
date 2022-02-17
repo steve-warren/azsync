@@ -9,11 +9,11 @@ public class FileSystem : IFileSystem
         _hash = hash;
     }
 
-    public IEnumerable<LocalFile> GetFilesInDirectory(string directoryPath, int maxRecursionDepth)
+    public IEnumerable<LocalFile> GetFilesInDirectory(DirectoryQuery query)
     {
-        var query = Directory.EnumerateFiles(path: directoryPath, searchPattern: "*", new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = maxRecursionDepth });
+        var files = Directory.EnumerateFiles(path: query.Path, searchPattern: query.SearchPattern, new EnumerationOptions { RecurseSubdirectories = query.Recursive, MaxRecursionDepth = query.MaxRecursionDepth });
 
-        foreach(var file in query)
+        foreach(var file in files)
         {
             var info = new FileInfo(file);
 

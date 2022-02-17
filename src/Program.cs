@@ -14,7 +14,7 @@ app.Command("sync", (command) =>
     command.HelpOption("-?|-h|--help");
 
     var locationArgument = command.Argument("[path]",
-                                "An absolute or relative path to the directory to sync.");
+                                "An absolute or relative path of the directory to sync.");
 
     command.OnExecute(() =>
         {
@@ -22,7 +22,7 @@ app.Command("sync", (command) =>
             {        
                 using var context = new SyncDbContext();
                 
-                var c1 = new CaptureLocalDirectory(locationArgument.Value, int.MaxValue);
+                var c1 = new CaptureLocalDirectory(DirectoryPath: locationArgument.Value, SearchPattern: "*");
                 var h1 = new CaptureLocalDirectoryHandler(
                     new FileSystem(new Md5HashAlgorithm()),
                     new LocalFileRepository(context));
@@ -41,6 +41,37 @@ app.Command("sync", (command) =>
 
             return 0;
         });
+});
+
+app.Command("add", (command) =>
+{
+    command.Command("remote", (command) =>
+    {
+        var tenantOption = command.Option("-t|--tenant <tenantId>", "The Azure Active Directory tenant (directory) Id of the service principal.", CommandOptionType.SingleValue);
+        var clientOption = command.Option("-c|--client <clientId>", "The client (application) Id of the service principal.", CommandOptionType.SingleValue);
+        var clientSecret = command.Option("-s|--secret <secret>", "A client secret that was generated for the App Registration used to authenticate the client.", CommandOptionType.SingleValue);
+        var container = command.Option("-cn|--containerName <containerName>", "The name of the blob storage container.", CommandOptionType.SingleValue);
+        var name = command.Option("-n|--name <name>", "The name or alias of this remote target.", CommandOptionType.SingleValue);
+
+        command.HelpOption("-?|-h|--help");
+
+        command.OnExecute(async () =>
+        {
+            Console.WriteLine("add remote execute.");
+            return 0;
+        });
+    });
+
+    command.Command("path", (command) =>
+    {
+        command.HelpOption("-?|-h|--help");
+
+        command.OnExecute(() =>
+        {
+            Console.WriteLine("add path execute.");
+            return 0;
+        });
+    });
 });
 
 app.Command("login", (command) =>
@@ -118,7 +149,7 @@ app.OnExecute(async () =>
 
     Console.WriteLine(watch.ElapsedMilliseconds);
 
-    return 0;
+    return -1;
 });
 
 app.Execute(args);

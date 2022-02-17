@@ -5,7 +5,7 @@ namespace azsync;
 /// </summary>
 /// <param name="DirectoryPath">The path to the directory.</param>
 /// <param name="MaxRecursionDepth"></param>
-public record CaptureLocalDirectory(string DirectoryPath, int MaxRecursionDepth) : ICommand { }
+public record CaptureLocalDirectory(string DirectoryPath, string SearchPattern, bool Recursive = false, int MaxRecursionDepth = int.MaxValue) : ICommand { }
 
 public class CaptureLocalDirectoryHandler : ICommandHandler<CaptureLocalDirectory>
 {
@@ -20,7 +20,9 @@ public class CaptureLocalDirectoryHandler : ICommandHandler<CaptureLocalDirector
 
     public void Handle(CaptureLocalDirectory command)
     {
-        var files = _fs.GetFilesInDirectory(directoryPath: command.DirectoryPath, maxRecursionDepth: command.MaxRecursionDepth);
+        var query = new DirectoryQuery(Path: command.DirectoryPath, SearchPattern: command.SearchPattern);
+
+        var files = _fs.GetFilesInDirectory(query);
 
         _localFileRepository.ReplaceAll(files);
     }
