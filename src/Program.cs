@@ -45,11 +45,31 @@ app.Command("sync", (command) =>
 
 app.Command("add", (command) =>
 {
-    command.Command("remote", (command) =>
+    command.Command("credentials", (command) =>
     {
         var tenantOption = command.Option("-t|--tenant <tenantId>", "The Azure Active Directory tenant (directory) Id of the service principal.", CommandOptionType.SingleValue);
         var clientOption = command.Option("-c|--client <clientId>", "The client (application) Id of the service principal.", CommandOptionType.SingleValue);
         var clientSecret = command.Option("-s|--secret <secret>", "A client secret that was generated for the App Registration used to authenticate the client.", CommandOptionType.SingleValue);
+        var name = command.Option("-n|--name <name>", "A given name for the credentials.", CommandOptionType.SingleValue);
+
+        command.Description = "Log in to Azure.";
+
+        command.HelpOption("-?|-h|--help");
+
+        command.OnExecute(async () =>
+        {
+            var command = new LoginWithCredential(Name: name.Value(), Tenant: tenantOption.Value(), Client: clientOption.Value(), Secret: clientSecret.Value());
+            using var context = new SyncDbContext();
+            
+            var handler = new LoginWithCredentialHandler(new AzureCredentialRepository(context), context);
+            await handler.Handle(command);
+
+            return 0;
+        });
+    });
+
+    command.Command("remote", (command) =>
+    {
         var container = command.Option("-cn|--containerName <containerName>", "The name of the blob storage container.", CommandOptionType.SingleValue);
         var name = command.Option("-n|--name <name>", "The name or alias of this remote target.", CommandOptionType.SingleValue);
 
@@ -74,25 +94,19 @@ app.Command("add", (command) =>
     });
 });
 
-app.Command("login", (command) =>
+app.Command("list", (command) =>
 {
-    command.Description = "Log in to Azure.";
-
-    var tenantOption = command.Option("-t|--tenant <tenantId>", "The Azure Active Directory tenant (directory) Id of the service principal.", CommandOptionType.SingleValue);
-    var clientOption = command.Option("-c|--client <clientId>", "The client (application) Id of the service principal.", CommandOptionType.SingleValue);
-    var clientSecret = command.Option("-s|--secret <secret>", "A client secret that was generated for the App Registration used to authenticate the client.", CommandOptionType.SingleValue);
-
-    command.HelpOption("-?|-h|--help");
-
-    command.OnExecute(async () =>
+    command.Command("credentials", (command) =>
     {
-        var command = new Login(Tenant: tenantOption.Value(), Client: clientOption.Value(), Secret: clientSecret.Value());
-        using var context = new SyncDbContext();
-        
-        var handler = new LoginHandler(new ConfigurationSettingRepository(context), context);
-        await handler.Handle(command);
+        command.OnExecute(async () =>
+        {
+            using var context = new SyncDbContext();
 
-        return 0;
+            var handler = new ListCredentialsHandler(new AzureCredentialRepository(context));
+            await handler.Handle(new ListCredentials());
+
+            return 0;
+        });
     });
 });
 
@@ -102,10 +116,6 @@ app.Command("logout", (command) =>
 
     command.OnExecute(async () =>
     {
-        using var context = new SyncDbContext();
-        var handler = new LogoutHandler(new ConfigurationSettingRepository(context), context);
-        await handler.Handle(new Logout());
-
         return 0;
     });
 });

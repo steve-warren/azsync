@@ -2,5 +2,5 @@ namespace azsync;
 
 public interface IUnitOfWork
 {
-    void SaveChanges();
+    Task SaveChangesAsync();
 }

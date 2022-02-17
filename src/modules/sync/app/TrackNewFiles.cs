@@ -29,6 +29,6 @@ public class TrackNewFilesHandler : ICommandHandler<TrackNewFiles>
             _syncFileRepository.Add(syncFile);
         }
 
-        _unitOfWork.SaveChanges();
+        _unitOfWork.SaveChangesAsync();
     }
 }

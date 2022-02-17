@@ -5,8 +5,14 @@ namespace azsync;
 
 public class SyncDbContext : DbContext, IUnitOfWork
 {
+    public SyncDbContext()
+    {
+        Database.EnsureCreated();
+    }
+
     public DbSet<LocalFile> LocalFiles { get; set; }
     public DbSet<SyncFile> SyncFiles { get; set; }
+    public DbSet<AzureCredential> AzureCredentials { get; set; }
     public DbSet<ConfigurationSetting> ConfigurationSettings { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
@@ -16,6 +22,10 @@ public class SyncDbContext : DbContext, IUnitOfWork
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AzureCredential>()
+                    .ToTable("AzureCredential")
+                    .HasKey("Name");
+
         modelBuilder.Entity<LocalFile>()
                     .ToTable("LocalFile")
                     .HasKey("Path");
@@ -32,8 +42,8 @@ public class SyncDbContext : DbContext, IUnitOfWork
                     .HasKey("Key");
     }
 
-    void IUnitOfWork.SaveChanges()
+    Task IUnitOfWork.SaveChangesAsync()
     {
-        base.SaveChanges();
+        return base.SaveChangesAsync();
     }
 }
