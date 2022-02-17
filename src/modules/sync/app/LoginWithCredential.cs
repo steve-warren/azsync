@@ -33,7 +33,7 @@ public class LoginWithCredentialHandler : IAsyncCommandHandler<LoginWithCredenti
 
         if (authenticationResult == AuthenticationResult.OK)
         {
-            var azureCredentials = new AzureCredential(Name: command.Name, Tenant: command.Tenant, Client: command.Client, Secret: command.Secret);
+            var azureCredentials = new AzureCredential(name: command.Name, tenant: command.Tenant, client: command.Client, secret: command.Secret);
 
             _repository.Add(azureCredentials);
 

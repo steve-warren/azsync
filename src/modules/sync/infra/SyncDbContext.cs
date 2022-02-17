@@ -13,6 +13,7 @@ public class SyncDbContext : DbContext, IUnitOfWork
     public DbSet<LocalFile> LocalFiles { get; set; }
     public DbSet<SyncFile> SyncFiles { get; set; }
     public DbSet<AzureCredential> AzureCredentials { get; set; }
+    public DbSet<AzureContainer> AzureContainers { get; set; }
     public DbSet<ConfigurationSetting> ConfigurationSettings { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
@@ -24,7 +25,11 @@ public class SyncDbContext : DbContext, IUnitOfWork
     {
         modelBuilder.Entity<AzureCredential>()
                     .ToTable("AzureCredential")
-                    .HasKey("Name");
+                    .HasKey("Id");
+
+        modelBuilder.Entity<AzureContainer>()
+                    .ToTable("AzureContainer")
+                    .HasKey("Id");
 
         modelBuilder.Entity<LocalFile>()
                     .ToTable("LocalFile")

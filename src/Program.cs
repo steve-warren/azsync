@@ -68,16 +68,20 @@ app.Command("add", (command) =>
         });
     });
 
-    command.Command("remote", (command) =>
+    command.Command("container", (command) =>
     {
-        var container = command.Option("-cn|--containerName <containerName>", "The name of the blob storage container.", CommandOptionType.SingleValue);
-        var name = command.Option("-n|--name <name>", "The name or alias of this remote target.", CommandOptionType.SingleValue);
+        var url = command.Argument("[blobStorageContainerUrl]", "The url to the blob storage container.");
+        var name = command.Argument("[name]", "A given name for the blob storage container.");
+        var credential = command.Argument("[credential]", "The name of the credentials used to authenticate with this blob storage container.");
 
         command.HelpOption("-?|-h|--help");
 
         command.OnExecute(async () =>
         {
-            Console.WriteLine("add remote execute.");
+            using var context = new SyncDbContext();
+            var command = new AddAzureContainer(ContainerUrl: url.Value, Name: name.Value, CredentialName: credential.Value);
+            var handler = new AddAzureContainerHandler(new AzureCredentialRepository(context), new AzureContainerRepository(context), context);
+            await handler.Handle(command);
             return 0;
         });
     });
@@ -108,6 +112,19 @@ app.Command("list", (command) =>
             return 0;
         });
     });
+
+    command.Command("containers", (command) =>
+    {
+        command.OnExecute(async () =>
+        {
+            using var context = new SyncDbContext();
+
+            var handler = new ListAzureContainersHandler(new AzureContainerRepository(context));
+            await handler.Handle(new ListAzureContainers());
+
+            return 0;
+        });
+    });
 });
 
 app.Command("delete", (command) =>
@@ -123,6 +140,22 @@ app.Command("delete", (command) =>
 
             var handler = new DeleteCredentialHandler(new AzureCredentialRepository(context), context);
             await handler.Handle(new DeleteCredential(Name: credentialName.Value));
+
+            return 0;
+        });
+    });
+
+    command.Command("container", (command) =>
+    {
+        command.HelpOption("-?|-h|--help");
+        var containerName = command.Argument("[name]", "The name of the container to delete.");
+        
+        command.OnExecute(async () =>
+        {
+            using var context = new SyncDbContext();
+
+            var handler = new DeleteContainerHandler(new AzureContainerRepository(context), context);
+            await handler.Handle(new DeleteContainer(Name: containerName.Value));
 
             return 0;
         });

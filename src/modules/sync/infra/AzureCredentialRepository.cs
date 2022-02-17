@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace azsync;
 
-
 public class AzureCredentialRepository : IAzureCredentialRepository
 {
     private readonly SyncDbContext _context;
