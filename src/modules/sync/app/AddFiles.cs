@@ -5,7 +5,7 @@ namespace azsync;
 /// </summary>
 /// <param name="DirectoryPath">The path to the directory.</param>
 /// <param name="MaxRecursionDepth"></param>
-public record AddFiles(string Path, string SearchPattern, bool Recursive = false, int MaxRecursionDepth = int.MaxValue) : ICommand { }
+public record AddFiles(string Path) : ICommand { }
 
 public class AddFilesHandler : ICommandHandler<AddFiles>
 {
@@ -21,13 +21,11 @@ public class AddFilesHandler : ICommandHandler<AddFiles>
     public void Handle(AddFiles command)
     {
         // todo refactor
-        var query = new DirectoryQuery(Path: command.Path, SearchPattern: command.SearchPattern);
-
         var type = FilePathType.Invalid;
 
-        var isGlob = command.Path.LastIndexOfAny(new[] { '*', '?' }) != -1;
-        var isFile = new FileInfo(command.Path).Exists;
-        var isDirectory = new DirectoryInfo(command.Path).Exists;
+        var isGlob = _fs.IsGlob(command.Path);
+        var isFile = _fs.IsFile(command.Path);
+        var isDirectory = _fs.IsDirectory(command.Path);
         var isInvalid = !(isFile ^ isDirectory ^ isGlob);
 
         if (isInvalid) type = FilePathType.Invalid;
@@ -35,24 +33,27 @@ public class AddFilesHandler : ICommandHandler<AddFiles>
         else if (isDirectory) type = FilePathType.Directory;
         else if (isGlob) type = FilePathType.Glob;
 
-        var s = type switch
+        var files = new List<LocalFile>();
+
+        if (type is FilePathType.Invalid)
         {
-            FilePathType.Invalid => "invalid",
-            FilePathType.File => "file",
-            FilePathType.Directory => "dir",
-            FilePathType.Glob => "glob",
-            _ => throw new NotImplementedException()
-        };
+            Console.WriteLine("Invalid glob, file or directory path.");
+            return;
+        }
 
-        Console.WriteLine(s);
-        return;
+        else if (type is FilePathType.Glob)
+            files.AddRange(_fs.Glob(glob: command.Path));
 
-        var files = _fs.GetFilesInDirectory(query);
+        else if (type is FilePathType.Directory)
+            files.AddRange(_fs.GetFiles(path: command.Path));
 
-        foreach(var file in files)
-            Console.WriteLine(file.Name + " " + file.LastModified);
+        else if (type is FilePathType.File)
+        {
+            var file = _fs.GetFile(path: command.Path);
+            if (file is not null) files.Add(file);
+        }
 
-        //_localFileRepository.ReplaceAll(files);
+        _localFileRepository.ReplaceAll(files);
     }
 }
 

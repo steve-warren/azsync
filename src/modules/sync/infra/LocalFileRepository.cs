@@ -86,7 +86,7 @@ public class LocalFileRepository : ILocalFileRepository
         command.CommandText = @"
         PRAGMA temp_store=MEMORY;PRAGMA temp_store;
         DROP TABLE IF EXISTS LocalFile;
-        CREATE TEMP TABLE IF NOT EXISTS LocalFile
+        CREATE TABLE IF NOT EXISTS LocalFile
         (
             Id INTEGER NOT NULL,
             Path VARCHAR(256) NOT NULL,
