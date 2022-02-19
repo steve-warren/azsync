@@ -14,14 +14,14 @@ public class SyncFile
     }
 
     public int Id { get; set; }
-    public string Name { get; set; }
-    public string LocalFilePath { get; set; }
-    public string LocalFilePathHash { get; set; }
+    public string Name { get; set; } = "";
+    public string LocalFilePath { get; set; } = "";
+    public string LocalFilePathHash { get; set; } = "";
     public string? RemoteFilePath { get; set; }
     public DateTime LastModified { get; set; }
     public long FileSizeInBytes { get; set; }
-    public string ContentHash { get; set; }
-    public string State { get; set; }
+    public string ContentHash { get; set; } = "";
+    public string State { get; set; } = "";
 
     public void SetContentHash(string contentHash) => ContentHash = contentHash;
 

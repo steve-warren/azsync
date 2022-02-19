@@ -22,8 +22,8 @@ app.Command("sync", (command) =>
             {        
                 using var context = new SyncDbContext();
                 
-                var c1 = new CaptureLocalDirectory(DirectoryPath: locationArgument.Value, SearchPattern: "*");
-                var h1 = new CaptureLocalDirectoryHandler(
+                var c1 = new AddFiles(Path: locationArgument.Value, SearchPattern: "*");
+                var h1 = new AddFilesHandler(
                     new FileSystem(new Md5HashAlgorithm()),
                     new LocalFileRepository(context));
 
@@ -88,11 +88,17 @@ app.Command("add", (command) =>
 
     command.Command("path", (command) =>
     {
+        var pathArgument = command.Argument("[filePath]", "The path to a single file or directory.");
+        var searchOption = command.Argument("[pattern]", "Search pattern.");
+
         command.HelpOption("-?|-h|--help");
 
         command.OnExecute(() =>
         {
-            Console.WriteLine("add path execute.");
+            using var context = new SyncDbContext();
+            var command = new AddFiles(Path: pathArgument.Value, SearchPattern: searchOption.Value ?? "*");
+            var handler = new AddFilesHandler(new FileSystem(new Md5HashAlgorithm()), new LocalFileRepository(context));
+            handler.Handle(command);
             return 0;
         });
     });

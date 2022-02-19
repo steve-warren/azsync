@@ -9,9 +9,12 @@ public class ConfigurationSettingRepository : IConfigurationSettingRepository
         _context = context;
     }
 
-    public Task<ConfigurationSetting> FindAsync(string key)
+    public async Task<ConfigurationSetting> FindAsync(string key)
     {
-        return _context.ConfigurationSettings.FindAsync(key).AsTask();
+        var setting = await _context.ConfigurationSettings.FindAsync(key).AsTask();
+        if (setting is null) throw new KeyNotFoundException();
+
+        return setting;
     }
     
     public void AddRange(IEnumerable<ConfigurationSetting> settings)

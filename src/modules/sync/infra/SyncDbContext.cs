@@ -10,11 +10,11 @@ public class SyncDbContext : DbContext, IUnitOfWork
         Database.EnsureCreated();
     }
 
-    public DbSet<LocalFile> LocalFiles { get; set; }
-    public DbSet<SyncFile> SyncFiles { get; set; }
-    public DbSet<AzureCredential> AzureCredentials { get; set; }
-    public DbSet<AzureContainer> AzureContainers { get; set; }
-    public DbSet<ConfigurationSetting> ConfigurationSettings { get; set; }
+    public DbSet<LocalFile> LocalFiles => Set<LocalFile>();
+    public DbSet<SyncFile> SyncFiles => Set<SyncFile>();
+    public DbSet<AzureCredential> AzureCredentials => Set<AzureCredential>();
+    public DbSet<AzureContainer> AzureContainers => Set<AzureContainer>();
+    public DbSet<ConfigurationSetting> ConfigurationSettings => Set<ConfigurationSetting>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
