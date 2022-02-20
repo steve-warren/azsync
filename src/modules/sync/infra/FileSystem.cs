@@ -26,28 +26,28 @@ public class FileSystem : IFileSystem
         return new LocalPath(path, type.Name, containerId);
     }
 
-    public LocalFile? GetFile(string path)
+    public LocalFile? GetFile(LocalPath path)
     {
-        var info = new FileInfo(path);
+        var info = new FileInfo(path.Path);
 
         if (info.Exists is false) return default;
         
-        return new LocalFile(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length);
+        return new LocalFile(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerId: path.ContainerId);
     }
 
-    public IEnumerable<LocalFile> GetFiles(string path)
+    public IEnumerable<LocalFile> GetFiles(LocalPath path)
     {
-        foreach(var file in Directory.EnumerateFiles(path: path))
+        foreach(var file in Directory.EnumerateFiles(path: path.Path))
         {
             var info = new FileInfo(file);
 
-            yield return new LocalFile(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length);
+            yield return new LocalFile(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerId: path.ContainerId);
         }
     }
 
-    public IEnumerable<LocalFile> Glob(string glob)
+    public IEnumerable<LocalFile> Glob(LocalPath path)
     {
-        var globInfo = new FileInfo(glob);
+        var globInfo = new FileInfo(path.Path);
         var fullPath = globInfo.DirectoryName;
         var pattern = globInfo.Name;
 
@@ -57,7 +57,7 @@ public class FileSystem : IFileSystem
         {
             var info = new FileInfo(file);
 
-            yield return new LocalFile(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length);
+            yield return new LocalFile(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerId: path.ContainerId);
         }
     }
 

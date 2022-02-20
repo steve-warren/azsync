@@ -8,4 +8,4 @@ namespace azsync;
 /// <param name="LastModified">The time the file was last modified.</param>
 /// <param name="PathHash">The hashed representation of the LocalFile's path.</param>
 /// <param name="FileSizeInBytes">The size of the LocalFile in bytes.</param>
-public record LocalFile(string Path, string Name, DateTime LastModified, string PathHash, long FileSizeInBytes);
+public record LocalFile(string Path, string Name, DateTime LastModified, string PathHash, long FileSizeInBytes, int LocalPathId, int ContainerId);

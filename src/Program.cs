@@ -18,8 +18,8 @@ app.Command("push", (command) =>
             {        
                 using var context = new SyncDbContext();
                 
-                var c2 = new TrackLocalPathChanges();
-                var h2 = new TrackLocalPathChangesHandler(context, new FileSystem(new Md5HashAlgorithm()), new LocalFileRepository(context), new SyncFileRepository(context), context);
+                var c2 = new Push();
+                var h2 = new PushHandler(context, new FileSystem(new Md5HashAlgorithm()), new LocalFileRepository(context), new SyncFileRepository(context), context);
 
                 await h2.Handle(c2);
             }
@@ -218,7 +218,7 @@ app.OnExecute(async () =>
             fileStream.Seek(0, SeekOrigin.Begin);
 
             var blob = await containerClient.UploadBlobAsync(file.LocalFilePath, fileStream);
-
+            
             file.Upload(Convert.ToBase64String(blob.Value.ContentHash));
 
             await context.SaveChangesAsync();

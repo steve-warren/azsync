@@ -25,8 +25,8 @@ public class LocalFileRepository : ILocalFileRepository
             using var transaction = connection.BeginTransaction();
             using var sqlCommand = connection.CreateCommand();
             sqlCommand.CommandText = @"
-                INSERT INTO LocalFile(Path, Name, PathHash, FileSizeInBytes, LastModified)
-                VALUES($Path, $Name, $PathHash, $FileSizeInBytes, $LastModified)";
+                INSERT INTO LocalFile(Path, Name, PathHash, FileSizeInBytes, LastModified, LocalPathId, ContainerId)
+                VALUES($Path, $Name, $PathHash, $FileSizeInBytes, $LastModified, $LocalPathId, $ContainerId)";
             
             var path = sqlCommand.CreateParameter();
             path.ParameterName = "$Path";
@@ -48,6 +48,14 @@ public class LocalFileRepository : ILocalFileRepository
             modified.ParameterName = "$LastModified";
             sqlCommand.Parameters.Add(modified);
 
+            var localPathId = sqlCommand.CreateParameter();
+            localPathId.ParameterName = "$LocalPathId";
+            sqlCommand.Parameters.Add(localPathId);
+
+            var containerId = sqlCommand.CreateParameter();
+            containerId.ParameterName = "$ContainerId";
+            sqlCommand.Parameters.Add(containerId);
+
             sqlCommand.Prepare();
 
             foreach(var file in files)
@@ -57,6 +65,8 @@ public class LocalFileRepository : ILocalFileRepository
                 hash.Value = file.PathHash;
                 size.Value = file.FileSizeInBytes;
                 modified.Value = file.LastModified;
+                localPathId.Value = file.LocalPathId;
+                containerId.Value = file.ContainerId;
 
                 sqlCommand.ExecuteNonQuery();
             }
@@ -94,6 +104,8 @@ public class LocalFileRepository : ILocalFileRepository
             PathHash VARCHAR(32) NOT NULL,
             FileSizeInBytes INT NOT NULL,
             LastModified DATETIME NOT NULL,
+            LocalPathId INT NOT NULL,
+            ContainerId INT NOT NULL,
             PRIMARY KEY('Id' AUTOINCREMENT)
         )";
 
