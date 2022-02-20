@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using azsync;
-using Azure.Identity;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.CommandLineUtils;
 
@@ -8,30 +7,21 @@ var app = new CommandLineApplication();
 app.Name = "azsync";
 app.HelpOption("-?|-h|--help");
 
-app.Command("sync", (command) =>
+app.Command("push", (command) =>
 {
     command.Description = "";
     command.HelpOption("-?|-h|--help");
 
-    var locationArgument = command.Argument("[path]",
-                                "An absolute or relative path of the directory to sync.");
-
-    command.OnExecute(() =>
+    command.OnExecute(async () =>
         {
             try
             {        
                 using var context = new SyncDbContext();
                 
-                var c1 = new AddFiles(Path: locationArgument.Value);
-                var h1 = new AddFilesHandler(
-                    new FileSystem(new Md5HashAlgorithm()),
-                    new LocalFileRepository(context));
+                var c2 = new TrackLocalPathChanges();
+                var h2 = new TrackLocalPathChangesHandler(context, new FileSystem(new Md5HashAlgorithm()), new LocalFileRepository(context), new SyncFileRepository(context), context);
 
-                var c2 = new TrackNewFiles();
-                var h2 = new TrackNewFilesHandler(new LocalFileRepository(context), new SyncFileRepository(context), context);
-
-                h1.Handle(c1);
-                h2.Handle(c2);
+                await h2.Handle(c2);
             }
         
             catch(Exception ex)
@@ -92,12 +82,12 @@ app.Command("add", (command) =>
 
         command.HelpOption("-?|-h|--help");
 
-        command.OnExecute(() =>
+        command.OnExecute(async () =>
         {
             using var context = new SyncDbContext();
-            var command = new AddFiles(Path: pathArgument.Value);
-            var handler = new AddFilesHandler(new FileSystem(new Md5HashAlgorithm()), new LocalFileRepository(context));
-            handler.Handle(command);
+            var command = new AddPath(Path: pathArgument.Value);
+            var handler = new AddPathHandler(new FileSystem(new Md5HashAlgorithm()), context);
+            await handler.Handle(command);
             return 0;
         });
     });
@@ -126,6 +116,19 @@ app.Command("list", (command) =>
 
             var handler = new ListAzureContainersHandler(new AzureContainerRepository(context));
             await handler.Handle(new ListAzureContainers());
+
+            return 0;
+        });
+    });
+
+    command.Command("paths", (command) =>
+    {
+        command.OnExecute(async () =>
+        {
+            using var context = new SyncDbContext();
+
+            await foreach(var path in context.LocalPaths.AsAsyncEnumerable())
+                Console.WriteLine(path.Path);
 
             return 0;
         });
@@ -161,6 +164,30 @@ app.Command("delete", (command) =>
 
             var handler = new DeleteContainerHandler(new AzureContainerRepository(context), context);
             await handler.Handle(new DeleteContainer(Name: containerName.Value));
+
+            return 0;
+        });
+    });
+
+    command.Command("path", (command) =>
+    {
+        var pathArgument = command.Argument("[path]", "The name of the path to delete.");
+        
+        command.OnExecute(async () =>
+        {
+            using var context = new SyncDbContext();
+
+            var path = context.LocalPaths.FirstOrDefault(p => p.Path == pathArgument.Value);
+
+            if (path is null)
+            {
+                Console.WriteLine("Path not found.");
+                return 0;
+            }
+
+            context.LocalPaths.Remove(path);
+            await context.SaveChangesAsync();
+            Console.WriteLine("Path deleted.");
 
             return 0;
         });

@@ -3,32 +3,52 @@ namespace azsync;
 /// <summary>
 /// Gathers file information for the specified directory.
 /// </summary>
-public record TrackNewFiles() : ICommand { }
+public record TrackLocalPathChanges() : ICommand { }
 
-public class TrackNewFilesHandler : ICommandHandler<TrackNewFiles>
+public class TrackLocalPathChangesHandler : IAsyncCommandHandler<TrackLocalPathChanges>
 {
     private readonly ILocalFileRepository _localFileRepository;
     private readonly ISyncFileRepository _syncFileRepository;
+    private IFileSystem _fs;
+    private readonly SyncDbContext _context;
     private readonly IUnitOfWork _unitOfWork;
 
-    public TrackNewFilesHandler(ILocalFileRepository localFileRepository, ISyncFileRepository syncFileRepository, IUnitOfWork unitOfWork)
+    public TrackLocalPathChangesHandler(SyncDbContext context, IFileSystem fileSystem, ILocalFileRepository localFileRepository, ISyncFileRepository syncFileRepository, IUnitOfWork unitOfWork)
     {
+        _context = context;
+        _fs = fileSystem;
         _localFileRepository = localFileRepository;
         _syncFileRepository = syncFileRepository;
         _unitOfWork = unitOfWork;
     }
 
-    public void Handle(TrackNewFiles _)
+    public async Task Handle(TrackLocalPathChanges _)
     {
-        var untrackedFiles = _localFileRepository.GetUntrackedFiles();
+        var paths = _context.LocalPaths.AsAsyncEnumerable();
 
-        foreach(var untrackedFile in untrackedFiles)
+        await foreach(var path in paths)
         {
-            var syncFile = new SyncFile(name: untrackedFile.Name, localFilePath: untrackedFile.Path, localFilePathHash: untrackedFile.PathHash, lastModified: untrackedFile.LastModified, fileSizeInBytes: untrackedFile.FileSizeInBytes);
+            if (path.PathType == "Glob")
+            {
+                foreach(var file in _fs.Glob(path.Path))
+                {
+                    Console.WriteLine(file.Path);
+                }
+            }
 
-            _syncFileRepository.Add(syncFile);
+            else if (path.PathType == "Directory")
+            {
+                foreach(var file in _fs.GetFiles(path.Path))
+                {
+                    Console.WriteLine(file.Path);
+                }
+            }
+
+            else if (path.PathType == "File")
+            {
+                var file = _fs.GetFile(path.Path);
+                Console.WriteLine(file?.Path);
+            }
         }
-
-        _unitOfWork.SaveChangesAsync();
     }
 }

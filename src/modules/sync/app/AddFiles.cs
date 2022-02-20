@@ -5,62 +5,35 @@ namespace azsync;
 /// </summary>
 /// <param name="DirectoryPath">The path to the directory.</param>
 /// <param name="MaxRecursionDepth"></param>
-public record AddFiles(string Path) : ICommand { }
+public record AddPath(string Path) : ICommand { }
 
-public class AddFilesHandler : ICommandHandler<AddFiles>
+public class AddPathHandler : IAsyncCommandHandler<AddPath>
 {
     private readonly IFileSystem _fs;
-    private readonly ILocalFileRepository _localFileRepository;
+    private readonly SyncDbContext _context;
 
-    public AddFilesHandler(IFileSystem fileSystem, ILocalFileRepository localFileRepository)
+    public AddPathHandler(IFileSystem fileSystem, SyncDbContext context)
     {
         _fs = fileSystem;
-        _localFileRepository = localFileRepository;
+        _context = context;
     }
 
-    public void Handle(AddFiles command)
+    public async Task Handle(AddPath command)
     {
-        // todo refactor
-        var type = FilePathType.Invalid;
+        var path = _fs.GetPath(command.Path);
 
-        var isGlob = _fs.IsGlob(command.Path);
-        var isFile = _fs.IsFile(command.Path);
-        var isDirectory = _fs.IsDirectory(command.Path);
-        var isInvalid = !(isFile ^ isDirectory ^ isGlob);
-
-        if (isInvalid) type = FilePathType.Invalid;
-        else if (isFile) type = FilePathType.File;
-        else if (isDirectory) type = FilePathType.Directory;
-        else if (isGlob) type = FilePathType.Glob;
-
-        var files = new List<LocalFile>();
-
-        if (type is FilePathType.Invalid)
+        if (path.PathType == LocalPathType.Invalid.Name)
         {
-            Console.WriteLine("Invalid glob, file or directory path.");
+            Console.WriteLine("Invalid glob, file, or directory path.");
             return;
         }
 
-        else if (type is FilePathType.Glob)
-            files.AddRange(_fs.Glob(glob: command.Path));
-
-        else if (type is FilePathType.Directory)
-            files.AddRange(_fs.GetFiles(path: command.Path));
-
-        else if (type is FilePathType.File)
+        if (_context.LocalPaths.Any(p => p.Path == path.Path) is false)
         {
-            var file = _fs.GetFile(path: command.Path);
-            if (file is not null) files.Add(file);
+            _context.LocalPaths.Add(path);
+            await _context.SaveChangesAsync();
         }
 
-        _localFileRepository.ReplaceAll(files);
+        Console.WriteLine("Path added.");
     }
-}
-
-public enum FilePathType
-{
-    Invalid,
-    File,
-    Directory,
-    Glob
 }
