@@ -9,7 +9,7 @@ public class FileSystem : IFileSystem
         _hash = hash;
     }
 
-    public LocalPath GetPath(string path)
+    public LocalPath CreatePath(string path, int containerId)
     {
         var type = LocalPathType.Invalid;
 
@@ -23,7 +23,7 @@ public class FileSystem : IFileSystem
         else if (isDirectory) type = LocalPathType.Directory;
         else if (isGlob) type = LocalPathType.Glob;
 
-        return new LocalPath(path, type.Name);
+        return new LocalPath(path, type.Name, containerId);
     }
 
     public LocalFile? GetFile(string path)

@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace azsync;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace azsync;
 /// </summary>
 /// <param name="DirectoryPath">The path to the directory.</param>
 /// <param name="MaxRecursionDepth"></param>
-public record AddPath(string Path) : ICommand { }
+public record AddPath(string Path, string ContainerName) : ICommand { }
 
 public class AddPathHandler : IAsyncCommandHandler<AddPath>
 {
@@ -20,7 +22,15 @@ public class AddPathHandler : IAsyncCommandHandler<AddPath>
 
     public async Task Handle(AddPath command)
     {
-        var path = _fs.GetPath(command.Path);
+        var container = await _context.AzureContainers.FirstOrDefaultAsync(c => c.Name == command.ContainerName);
+        
+        if (container is null)
+        {
+            Console.WriteLine($"Cannot find container '{command.ContainerName}'");
+            return;
+        }
+
+        var path = _fs.CreatePath(command.Path, container.Id);
 
         if (path.PathType == LocalPathType.Invalid.Name)
         {
@@ -34,6 +44,6 @@ public class AddPathHandler : IAsyncCommandHandler<AddPath>
             await _context.SaveChangesAsync();
         }
 
-        Console.WriteLine("Path added.");
+        Console.WriteLine($"The {path.PathType.ToLowerInvariant()} is now configured to be copied to the {container.Name} container.");
     }
 }

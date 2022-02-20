@@ -79,13 +79,14 @@ app.Command("add", (command) =>
     command.Command("path", (command) =>
     {
         var pathArgument = command.Argument("[path]", "The glob, file, or directory path.");
+        var containerName = command.Argument("[containerName]", "The name of the container the file will be copied.");
 
         command.HelpOption("-?|-h|--help");
 
         command.OnExecute(async () =>
         {
             using var context = new SyncDbContext();
-            var command = new AddPath(Path: pathArgument.Value);
+            var command = new AddPath(Path: pathArgument.Value, ContainerName: containerName.Value);
             var handler = new AddPathHandler(new FileSystem(new Md5HashAlgorithm()), context);
             await handler.Handle(command);
             return 0;
