@@ -3,7 +3,7 @@ namespace azsync;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 
-public class LocalFileRepository : ILocalFileRepository
+public class LocalFileRepository
 {
     private readonly SyncDbContext _context;
 
@@ -80,7 +80,7 @@ public class LocalFileRepository : ILocalFileRepository
         }
     }
 
-    public IQueryable<LocalFile> GetUntrackedFiles()
+    public Task<List<LocalFile>> GetNew()
     {
         var query = from lf in _context.LocalFiles
                     join sf in _context.SyncFiles on lf.PathHash equals sf.LocalFilePathHash into group_join
@@ -88,6 +88,16 @@ public class LocalFileRepository : ILocalFileRepository
                     where default_sf == null
                     select lf;
         
+        return query.ToListAsync();
+    }
+
+    public IQueryable<LocalFile> GetModified()
+    {
+        var query = from lf in _context.LocalFiles
+                    join sf in _context.SyncFiles on lf.PathHash equals sf.LocalFilePathHash
+                    where lf.LastModified > sf.LastModified
+                    select lf;
+
         return query;
     }
 

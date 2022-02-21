@@ -1,7 +1,13 @@
 ﻿using System.Diagnostics;
+using System.Text;
 using azsync;
+using Azure;
+using Azure.Identity;
 using Azure.Storage.Blobs;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.CommandLineUtils;
+
+Console.OutputEncoding = Encoding.UTF8;
 
 var app = new CommandLineApplication();
 app.Name = "azpush";
@@ -14,19 +20,124 @@ app.Command("push", (command) =>
 
     command.OnExecute(async () =>
         {
-            try
-            {        
-                using var context = new SyncDbContext();
-                
-                var c2 = new Push();
-                var h2 = new PushHandler(context, new FileSystem(new Md5HashAlgorithm()), new LocalFileRepository(context), new SyncFileRepository(context), context);
-
-                await h2.Handle(c2);
-            }
-        
-            catch(Exception ex)
+            var hash = new Md5HashAlgorithm();
+            var fs = new FileSystem(hash);
+            using var context = new SyncDbContext();
+            var localFiles = new LocalFileRepository(context);
+            var _syncFiles = new SyncFileRepository(context);
+            
+            foreach(var path in await context.LocalPaths.ToListAsync())
             {
-                Console.WriteLine(ex);
+                Console.WriteLine($"Looking for changes to {path.PathType.ToLowerInvariant()} '{path.Path}'...");
+                var localFilesPendingUpdate = Enumerable.Empty<LocalFile>();
+
+                try
+                {
+                    localFilesPendingUpdate = path.GetLocalFiles(fs);
+                }
+
+                catch(Exception)
+                {
+                    Console.WriteLine("Unable to read from file system. Ensure this process has the correct permissions set.");
+                    return 1;
+                }
+
+                localFiles.ReplaceAll(localFilesPendingUpdate);
+
+                var container = await context.AzureContainers.FirstOrDefaultAsync(c => c.Id == path.ContainerId);
+                var credentials = await context.AzureCredentials.FirstOrDefaultAsync(c => c.Id == container.CredentialId);
+
+                var serviceClient = new BlobServiceClient(new Uri(container.ContainerUrl), new ClientSecretCredential(tenantId: credentials.Tenant, clientId: credentials.Client, clientSecret: credentials.Secret));
+                
+                var containerClient = serviceClient.GetBlobContainerClient(container.Name);
+
+                foreach(var fileMetadata in await localFiles.GetNew())
+                {
+                    var file = new SyncFile(name: fileMetadata.Name, localFilePath: fileMetadata.Path, localFilePathHash: fileMetadata.PathHash, lastModified: fileMetadata.LastModified, fileSizeInBytes: fileMetadata.FileSizeInBytes, containerId: fileMetadata.ContainerId, localPathId: fileMetadata.LocalPathId);
+
+                    try
+                    {
+                        using var fileStream = new FileStream(path: file.LocalFilePath, mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read, bufferSize: 4096, useAsync: true);
+
+                        file.SetContentHash(await new Md5HashAlgorithm().ComputeHashAsync(fileStream));
+                        fileStream.Seek(0, SeekOrigin.Begin);
+
+                        Console.Write($"new: {file.Name} ({file.FileSizeInBytes} bytes) ...");
+
+                        var blobClient = containerClient.GetBlobClient(file.Name);
+                        var blob = await blobClient.UploadAsync(fileStream, overwrite: true);
+                    
+                        file.Upload(Convert.ToBase64String(blob.Value.ContentHash), DateTimeOffset.Now);
+                    }
+
+                    catch(Exception)
+                    {
+                        file.Error();
+                    }
+
+                    _syncFiles.Add(file);
+
+                    await context.SaveChangesAsync();
+
+                    if (file.State == "Error")
+                        Console.WriteLine("ERR 😬");
+
+                    if (file.State == "Uploaded")
+                        Console.WriteLine("OK. 🙌");
+                }
+
+                var updatedFiles = await localFiles.GetModified().ToListAsync();
+
+                foreach(var fileMetadata in updatedFiles)
+                {
+                    var file = context.SyncFiles.First(sf => sf.LocalFilePathHash == fileMetadata.PathHash);
+
+                    file.LastModified = fileMetadata.LastModified;
+                    file.FileSizeInBytes = fileMetadata.FileSizeInBytes;
+
+                    try
+                    {
+                        using var fileStream = new FileStream(path: file.LocalFilePath, mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read, bufferSize: 4096, useAsync: true);
+
+                        file.SetContentHash(await new Md5HashAlgorithm().ComputeHashAsync(fileStream));
+                        fileStream.Seek(0, SeekOrigin.Begin);
+
+                        Console.Write($"modified: {fileMetadata.Name} ({file.FileSizeInBytes} bytes) ...");
+
+                        var blobClient = containerClient.GetBlobClient(file.Name);
+
+                        var blob = await blobClient.UploadAsync(fileStream, overwrite: true);
+                    
+                        file.Upload(Convert.ToBase64String(blob.Value.ContentHash), DateTimeOffset.Now);
+                    }
+
+                    catch(Exception ex)
+                    {
+                        file.Error();
+                        Console.WriteLine(ex.Message);
+                    }
+
+                    await context.SaveChangesAsync();
+
+                    if (file.State == "Error")
+                        Console.WriteLine("ERR 😬");
+
+                    if (file.State == "Uploaded")
+                        Console.WriteLine("OK. 🙌");
+                }
+
+                
+                var deletedFiles = await _syncFiles.GetDeleted().ToListAsync();
+
+                foreach(var file in deletedFiles)
+                {
+                    Console.Write($"deleted: {file.Name} ({file.FileSizeInBytes} bytes) ...");
+
+                    context.SyncFiles.Remove(file);
+                    await context.SaveChangesAsync();
+
+                    Console.WriteLine("OK. 🙌");
+                }
             }
 
             return 0;
@@ -136,7 +247,7 @@ app.Command("list", (command) =>
     });
 });
 
-app.Command("delete", (command) =>
+app.Command("remove", (command) =>
 {
     command.Command("credential", (command) =>
     {
@@ -188,53 +299,11 @@ app.Command("delete", (command) =>
 
             context.LocalPaths.Remove(path);
             await context.SaveChangesAsync();
-            Console.WriteLine("Path deleted.");
+            Console.WriteLine("Path removed.");
 
             return 0;
         });
     });
-});
-
-app.OnExecute(async () =>
-{
-    var serviceClient = new BlobServiceClient(new Uri(""), null);
-
-    var name = DateTime.Now.Millisecond.ToString();
-
-    await serviceClient.CreateBlobContainerAsync(name);
-    var containerClient = serviceClient.GetBlobContainerClient(name);
-
-    using var context = new SyncDbContext();
-
-    var watch = Stopwatch.StartNew();
-    await foreach(var file in context.SyncFiles.AsAsyncEnumerable())
-    {
-        try
-        {
-            Console.WriteLine(file.Name);
-            using var fileStream = new FileStream(path: file.LocalFilePath, mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read, bufferSize: 4096, useAsync: true);
-
-            file.SetContentHash(await new Md5HashAlgorithm().ComputeHashAsync(fileStream));
-            fileStream.Seek(0, SeekOrigin.Begin);
-
-            var blob = await containerClient.UploadBlobAsync(file.LocalFilePath, fileStream);
-            
-            file.Upload(Convert.ToBase64String(blob.Value.ContentHash));
-
-            await context.SaveChangesAsync();
-        }
-
-        catch (FileNotFoundException)
-        {
-            file.NotFound();
-            
-            await context.SaveChangesAsync();
-        }
-    }
-
-    Console.WriteLine(watch.ElapsedMilliseconds);
-
-    return -1;
 });
 
 app.Execute(args);
