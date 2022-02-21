@@ -36,6 +36,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
         foreach(var untrackedFile in untrackedFiles)
         {
+            Console.WriteLine("untracked: " + untrackedFile.Name);
             var syncFile = new SyncFile(name: untrackedFile.Name, localFilePath: untrackedFile.Path, localFilePathHash: untrackedFile.PathHash, lastModified: untrackedFile.LastModified, fileSizeInBytes: untrackedFile.FileSizeInBytes, containerId: untrackedFile.ContainerId, localPathId: untrackedFile.LocalPathId);
 
             _syncFiles.Add(syncFile);

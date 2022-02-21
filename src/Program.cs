@@ -4,7 +4,7 @@ using Azure.Storage.Blobs;
 using Microsoft.Extensions.CommandLineUtils;
 
 var app = new CommandLineApplication();
-app.Name = "azsync";
+app.Name = "azpush";
 app.HelpOption("-?|-h|--help");
 
 app.Command("push", (command) =>

@@ -85,6 +85,7 @@ public class LocalFileRepository : ILocalFileRepository
         var query = from lf in _context.LocalFiles
                     join sf in _context.SyncFiles on lf.PathHash equals sf.LocalFilePathHash into group_join
                     from default_sf in group_join.DefaultIfEmpty()
+                    where default_sf == null
                     select lf;
         
         return query;
