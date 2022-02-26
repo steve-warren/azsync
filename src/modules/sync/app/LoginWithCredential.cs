@@ -1,8 +1,9 @@
+using azpush.modules.sync.domain;
 using Azure.Core;
 using Azure.Identity;
 using Microsoft.Identity.Client;
 
-namespace azsync;
+namespace azpush;
 
 public record LoginWithCredential(string Name, string Tenant, string Client, string Secret) : ICommand { }
 

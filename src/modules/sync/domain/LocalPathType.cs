@@ -1,4 +1,4 @@
-namespace azsync;
+namespace azpush;
 
 public record LocalPathType : Enumeration
 {

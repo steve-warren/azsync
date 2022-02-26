@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Text;
-using azsync;
+using azpush;
 using Azure;
 using Azure.Identity;
 using Azure.Storage.Blobs;

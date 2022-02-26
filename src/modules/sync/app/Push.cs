@@ -2,7 +2,7 @@ using Azure.Identity;
 using Azure.Storage.Blobs;
 using Microsoft.EntityFrameworkCore;
 
-namespace azsync;
+namespace azpush;
 
 public record Push : ICommand { }
 

@@ -2,7 +2,7 @@ using Azure.Core;
 using Azure.Identity;
 using Microsoft.Identity.Client;
 
-namespace azsync;
+namespace azpush;
 
 public record DeleteContainer(string Name) : ICommand { }
 

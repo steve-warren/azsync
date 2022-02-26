@@ -1,3 +1,3 @@
-namespace azsync;
+namespace azpush;
 
 public interface ICommand { }

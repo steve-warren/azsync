@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace azsync;
+namespace azpush;
 
 /// <summary>
 /// Gathers file information for the specified directory.

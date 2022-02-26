@@ -2,7 +2,7 @@ using Azure.Core;
 using Azure.Identity;
 using Microsoft.Identity.Client;
 
-namespace azsync;
+namespace azpush;
 
 public record AddAzureContainer(string ContainerUrl, string Name, string CredentialName) : ICommand { }
 

@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
-namespace azsync;
+namespace azpush;
 
 public class SyncDbContext : DbContext, IUnitOfWork
 {

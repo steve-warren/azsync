@@ -1,4 +1,4 @@
-namespace azsync;
+namespace azpush;
 
 /// <summary>
 /// Represents a file on the local file system.

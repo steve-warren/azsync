@@ -1,4 +1,4 @@
-namespace azsync;
+namespace azpush;
 
 public interface ICommandHandler<T> where T : ICommand
 {

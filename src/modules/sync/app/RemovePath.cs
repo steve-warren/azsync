@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace azsync;
+namespace azpush;
 
 public record RemovePath(string Path) : ICommand { }
 

@@ -1,4 +1,4 @@
-namespace azsync;
+namespace azpush;
 
 using System.Buffers;
 using System.Security.Cryptography;
