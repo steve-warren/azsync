@@ -15,7 +15,6 @@ public class SyncDbContext : DbContext, IUnitOfWork
     public DbSet<LocalPath> LocalPaths => Set<LocalPath>();
     public DbSet<AzureCredential> AzureCredentials => Set<AzureCredential>();
     public DbSet<AzureContainer> AzureContainers => Set<AzureContainer>();
-    public DbSet<ConfigurationSetting> ConfigurationSettings => Set<ConfigurationSetting>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
@@ -46,10 +45,6 @@ public class SyncDbContext : DbContext, IUnitOfWork
         modelBuilder.Entity<SyncFile>()
                     .ToTable("SyncFile")
                     .HasKey("Id");
-
-        modelBuilder.Entity<ConfigurationSetting>()
-                    .ToTable("ConfigurationSetting")
-                    .HasKey("Key");
     }
 
     Task IUnitOfWork.SaveChangesAsync()

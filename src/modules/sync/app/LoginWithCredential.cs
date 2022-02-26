@@ -1,4 +1,3 @@
-using azpush.modules.sync.domain;
 using Azure.Core;
 using Azure.Identity;
 using Microsoft.Identity.Client;
