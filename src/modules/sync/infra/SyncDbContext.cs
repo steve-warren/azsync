@@ -19,7 +19,7 @@ public class SyncDbContext : DbContext, IUnitOfWork
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
-        options.UseSqlite($"Data Source=../hello.db");
+        options.UseSqlite($"Data Source=azpush.cache");
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

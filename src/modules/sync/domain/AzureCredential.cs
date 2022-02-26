@@ -13,8 +13,8 @@ public class AzureCredential
     }
 
     public int Id { get; private set; }
-    public string Name { get; private set; } = "";
-    public string Tenant { get; private set; } = "";
-    public string Client { get; private set; } = "";
-    public string Secret { get; private set; } = "";
+    public string Name { get; set; } = "";
+    public string Tenant { get; set; } = "";
+    public string Client { get; set; } = "";
+    public string Secret { get; set; } = "";
 }

@@ -3,6 +3,6 @@ namespace azsync;
 public interface ISyncFileRepository
 {
     void Add(SyncFile file);
-    IQueryable<SyncFile> GetDeleted();
+    IQueryable<SyncFile> GetDeleted(int pathId);
     void Remove(SyncFile file);
 }

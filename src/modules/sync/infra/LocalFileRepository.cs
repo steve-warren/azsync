@@ -80,22 +80,22 @@ public class LocalFileRepository
         }
     }
 
-    public Task<List<LocalFile>> GetNew()
+    public Task<List<LocalFile>> GetNew(int pathId)
     {
         var query = from lf in _context.LocalFiles
                     join sf in _context.SyncFiles on lf.PathHash equals sf.LocalFilePathHash into group_join
                     from default_sf in group_join.DefaultIfEmpty()
-                    where default_sf == null
+                    where lf.LocalPathId == pathId && default_sf == null
                     select lf;
         
         return query.ToListAsync();
     }
 
-    public IQueryable<LocalFile> GetModified()
+    public IQueryable<LocalFile> GetModified(int pathId)
     {
         var query = from lf in _context.LocalFiles
                     join sf in _context.SyncFiles on lf.PathHash equals sf.LocalFilePathHash
-                    where lf.LastModified > sf.LastModified
+                    where lf.LocalPathId == pathId && lf.LastModified > sf.LastModified
                     select lf;
 
         return query;
@@ -107,7 +107,7 @@ public class LocalFileRepository
         command.CommandText = @"
         PRAGMA temp_store=MEMORY;PRAGMA temp_store;
         DROP TABLE IF EXISTS LocalFile;
-        CREATE TABLE IF NOT EXISTS LocalFile
+        CREATE TEMP TABLE IF NOT EXISTS LocalFile
         (
             Id INTEGER NOT NULL,
             Path VARCHAR(256) NOT NULL,

@@ -21,21 +21,24 @@ public class LoginWithCredentialHandler : IAsyncCommandHandler<LoginWithCredenti
 
     public async Task Handle(LoginWithCredential command)
     {
-        AuthenticationResult authenticationResult;
-
-        if (await _repository.ExistsAsync(command.Name))
-            authenticationResult = AuthenticationResult.CredentialAlreadyExists;
-
-        else
-        {
-            authenticationResult = await AuthenticateAsync(new ClientSecretCredential(tenantId: command.Tenant, clientId: command.Client, clientSecret: command.Secret));
-        }
+        AuthenticationResult authenticationResult = await AuthenticateAsync(new ClientSecretCredential(tenantId: command.Tenant, clientId: command.Client, clientSecret: command.Secret));
 
         if (authenticationResult == AuthenticationResult.OK)
         {
-            var azureCredentials = new AzureCredential(name: command.Name, tenant: command.Tenant, client: command.Client, secret: command.Secret);
+            var credentials = await _repository.GetByNameAsync(command.Name);
 
-            _repository.Add(azureCredentials);
+            if (credentials is not null)
+            {
+                credentials.Client = command.Client;
+                credentials.Secret = command.Secret;
+                credentials.Tenant = command.Tenant;
+            }
+
+            else
+            {
+                credentials = new AzureCredential(name: command.Name, tenant: command.Tenant, client: command.Client, secret: command.Secret);
+                _repository.Add(credentials);
+            }
 
             await _unitOfWork.SaveChangesAsync();
         }
@@ -52,7 +55,6 @@ public class LoginWithCredentialHandler : IAsyncCommandHandler<LoginWithCredenti
         else if (authenticationResult == AuthenticationResult.InvalidClientSecret) Console.WriteLine("Invalid client secret.");
         else if (authenticationResult == AuthenticationResult.InvalidScope) Console.WriteLine("Invalid scope.");
         else if (authenticationResult == AuthenticationResult.InvalidTenantIdentifier) Console.WriteLine("Invalid tenant identifier.");
-        else if (authenticationResult == AuthenticationResult.CredentialAlreadyExists) Console.WriteLine("Credential already exists. You will need to remove the existing credential before updating it.");
         else if (authenticationResult == AuthenticationResult.UnknownError) Console.WriteLine("Unknown error. Please check your network and firewall settings.");
     }
 
