@@ -62,7 +62,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
             foreach(var fileMetadata in await _localFiles.GetNew(path.Id))
             {
-                var file = new SyncFile(name: fileMetadata.Name, localFilePath: fileMetadata.Path, localFilePathHash: fileMetadata.PathHash, lastModified: fileMetadata.LastModified, fileSizeInBytes: fileMetadata.FileSizeInBytes, containerId: fileMetadata.ContainerId, localPathId: fileMetadata.LocalPathId);
+                var file = new RemoteFile(name: fileMetadata.Name, localFilePath: fileMetadata.Path, localFilePathHash: fileMetadata.PathHash, lastModified: fileMetadata.LastModified, fileSizeInBytes: fileMetadata.FileSizeInBytes, containerId: fileMetadata.ContainerId, localPathId: fileMetadata.LocalPathId);
 
                 try
                 {
@@ -76,6 +76,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
                     var blobClient = containerClient.GetBlobClient(file.Name);
                     var blob = await blobClient.UploadAsync(fileStream, overwrite: true);
                 
+                    file.RemoteFilePath = blobClient.Uri.ToString();
                     file.Upload(Convert.ToBase64String(blob.Value.ContentHash), DateTimeOffset.Now);
                 }
 
@@ -99,7 +100,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
             foreach(var fileMetadata in updatedFiles)
             {
-                var file = _context.SyncFiles.First(sf => sf.LocalFilePathHash == fileMetadata.PathHash);
+                var file = _context.RemoteFiles.First(sf => sf.LocalFilePathHash == fileMetadata.PathHash);
 
                 file.LastModified = fileMetadata.LastModified;
                 file.FileSizeInBytes = fileMetadata.FileSizeInBytes;
@@ -141,7 +142,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
             {
                 Console.Write($"deleted: {file.Name} ({file.FileSizeInBytes} bytes) ...");
 
-                _context.SyncFiles.Remove(file);
+                _context.RemoteFiles.Remove(file);
                 await _context.SaveChangesAsync();
 
                 Console.WriteLine("OK. 🙌");

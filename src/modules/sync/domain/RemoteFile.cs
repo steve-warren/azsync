@@ -1,9 +1,9 @@
 namespace azpush;
 
-public class SyncFile
+public class RemoteFile
 {
-    private SyncFile() { }
-    public SyncFile(string name, string localFilePath, string localFilePathHash, DateTime lastModified, long fileSizeInBytes, int containerId, int localPathId)
+    private RemoteFile() { }
+    public RemoteFile(string name, string localFilePath, string localFilePathHash, DateTime lastModified, long fileSizeInBytes, int containerId, int localPathId)
     {
         Name = name;
         LocalFilePath = localFilePath;

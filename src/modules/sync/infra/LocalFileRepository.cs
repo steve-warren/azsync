@@ -83,7 +83,7 @@ public class LocalFileRepository
     public Task<List<LocalFile>> GetNew(int pathId)
     {
         var query = from lf in _context.LocalFiles
-                    join sf in _context.SyncFiles on lf.PathHash equals sf.LocalFilePathHash into group_join
+                    join sf in _context.RemoteFiles on lf.PathHash equals sf.LocalFilePathHash into group_join
                     from default_sf in group_join.DefaultIfEmpty()
                     where lf.LocalPathId == pathId && default_sf == null
                     select lf;
@@ -94,7 +94,7 @@ public class LocalFileRepository
     public IQueryable<LocalFile> GetModified(int pathId)
     {
         var query = from lf in _context.LocalFiles
-                    join sf in _context.SyncFiles on lf.PathHash equals sf.LocalFilePathHash
+                    join sf in _context.RemoteFiles on lf.PathHash equals sf.LocalFilePathHash
                     where lf.LocalPathId == pathId && lf.LastModified > sf.LastModified
                     select lf;
 

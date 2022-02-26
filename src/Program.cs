@@ -1,10 +1,5 @@
-﻿using System.Diagnostics;
-using System.Text;
+﻿using System.Text;
 using azpush;
-using Azure;
-using Azure.Identity;
-using Azure.Storage.Blobs;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.CommandLineUtils;
 
 Console.OutputEncoding = Encoding.UTF8;

@@ -2,7 +2,7 @@ namespace azpush;
 
 public interface ISyncFileRepository
 {
-    void Add(SyncFile file);
-    IQueryable<SyncFile> GetDeleted(int pathId);
-    void Remove(SyncFile file);
+    void Add(RemoteFile file);
+    IQueryable<RemoteFile> GetDeleted(int pathId);
+    void Remove(RemoteFile file);
 }

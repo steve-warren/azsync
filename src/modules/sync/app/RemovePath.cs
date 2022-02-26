@@ -23,10 +23,10 @@ public class RemovePathHandler : IAsyncCommandHandler<RemovePath>
             return;
         }
 
-        var files = await _context.SyncFiles.Where(sf => sf.LocalPathId == path.Id).ToListAsync();
+        var files = await _context.RemoteFiles.Where(sf => sf.LocalPathId == path.Id).ToListAsync();
 
         _context.LocalPaths.Remove(path);
-        _context.SyncFiles.RemoveRange(files);
+        _context.RemoteFiles.RemoveRange(files);
 
         await _context.SaveChangesAsync();
         Console.WriteLine("Path removed.");
