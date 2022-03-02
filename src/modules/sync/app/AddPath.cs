@@ -2,30 +2,33 @@ using Microsoft.EntityFrameworkCore;
 
 namespace azpush;
 
-public record AddPath(string Path, string ContainerName, string? BlobName) : ICommand { }
+public record AddPath(string Path, string CredentialName, string ContainerUrl, string? BlobName) : ICommand { }
 
 public class AddPathHandler : IAsyncCommandHandler<AddPath>
 {
     private readonly IFileSystem _fs;
     private readonly SyncDbContext _context;
+    private readonly IAzureCredentialRepository _credentials;
 
-    public AddPathHandler(IFileSystem fileSystem, SyncDbContext context)
+
+    public AddPathHandler(IFileSystem fileSystem, SyncDbContext context, IAzureCredentialRepository credentials)
     {
         _fs = fileSystem;
         _context = context;
+        _credentials = credentials;
     }
 
     public async Task Handle(AddPath command)
     {
-        var container = await _context.AzureContainers.FirstOrDefaultAsync(c => c.Name == command.ContainerName);
-        
-        if (container is null)
+        var credential = await _credentials.GetByNameAsync(command.CredentialName);
+
+        if (credential is null)
         {
-            Console.WriteLine($"Cannot find container '{command.ContainerName}'");
+            Console.WriteLine($"Cannot find credental '{command.CredentialName}'.");
             return;
         }
 
-        var path = _fs.CreatePath(command.Path, container.Id, command.BlobName);
+        var path = _fs.CreatePath(path: command.Path, credentialId: credential.Id, containerUrl: command.ContainerUrl, blobName: command.BlobName);
 
         if (path.PathType == LocalPathType.Invalid.Name)
         {
@@ -39,6 +42,6 @@ public class AddPathHandler : IAsyncCommandHandler<AddPath>
             await _context.SaveChangesAsync();
         }
 
-        Console.WriteLine($"The {path.PathType.ToLowerInvariant()} is now configured to be copied to container {container.Name}.");
+        Console.WriteLine($"The {path.PathType.ToLowerInvariant()} is now configured to be copied to container {command.ContainerUrl}.");
     }
 }

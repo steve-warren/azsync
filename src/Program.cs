@@ -54,28 +54,11 @@ app.Command("add", (command) =>
 {
     command.HelpOption("-?|-h|--help");
 
-    command.Command("container", (command) =>
-    {
-        var url = command.Argument("[blobStorageContainerUrl]", "The url to the blob storage container.");
-        var name = command.Argument("[name]", "A given name for the blob storage container.");
-        var credential = command.Argument("[credential]", "The name of the credentials used to authenticate with this blob storage container.");
-
-        command.HelpOption("-?|-h|--help");
-
-        command.OnExecute(async () =>
-        {
-            using var context = new SyncDbContext();
-            var command = new AddAzureContainer(ContainerUrl: url.Value, Name: name.Value, CredentialName: credential.Value);
-            var handler = new AddAzureContainerHandler(new AzureCredentialRepository(context), new AzureContainerRepository(context), context);
-            await handler.Handle(command);
-            return 0;
-        });
-    });
-
     command.Command("path", (command) =>
     {
         var pathArgument = command.Argument("[path]", "The glob, file, or directory path which will be copied to blob storage.");
-        var containerName = command.Argument("[container]", "The name of the container to place the blob files.");
+        var containerUrl = command.Argument("[containerUrl]", "The url of the blob storage container to place the blob files. The url may contain a virtual directory path.");
+        var credential = command.Argument("[credential]", "The name of the credentials used to authenticate with this blob storage container.");
         var remoteFileName = command.Option("-n|--name <BLOB>", "The name for the blob file if path is a file.", CommandOptionType.SingleValue);
 
         command.HelpOption("-?|-h|--help");
@@ -85,8 +68,8 @@ app.Command("add", (command) =>
             var blobName = remoteFileName.HasValue() ? remoteFileName.Value() : null;
 
             using var context = new SyncDbContext();
-            var command = new AddPath(Path: pathArgument.Value, ContainerName: containerName.Value, BlobName: blobName);
-            var handler = new AddPathHandler(new FileSystem(new Md5HashAlgorithm()), context);
+            var command = new AddPath(Path: pathArgument.Value, CredentialName: credential.Value, ContainerUrl: containerUrl.Value, BlobName: blobName);
+            var handler = new AddPathHandler(new FileSystem(new Md5HashAlgorithm()), context, new AzureCredentialRepository(context));
             await handler.Handle(command);
             return 0;
         });
@@ -103,19 +86,6 @@ app.Command("list", (command) =>
 
             var handler = new ListCredentialsHandler(new AzureCredentialRepository(context));
             await handler.Handle(new ListCredentials());
-
-            return 0;
-        });
-    });
-
-    command.Command("containers", (command) =>
-    {
-        command.OnExecute(async () =>
-        {
-            using var context = new SyncDbContext();
-
-            var handler = new ListAzureContainersHandler(new AzureContainerRepository(context));
-            await handler.Handle(new ListAzureContainers());
 
             return 0;
         });
@@ -148,22 +118,6 @@ app.Command("remove", (command) =>
 
             var handler = new DeleteCredentialHandler(new AzureCredentialRepository(context), context);
             await handler.Handle(new DeleteCredential(Name: credentialName.Value));
-
-            return 0;
-        });
-    });
-
-    command.Command("container", (command) =>
-    {
-        command.HelpOption("-?|-h|--help");
-        var containerName = command.Argument("[name]", "The name of the container to delete.");
-        
-        command.OnExecute(async () =>
-        {
-            using var context = new SyncDbContext();
-
-            var handler = new DeleteContainerHandler(new AzureContainerRepository(context), context);
-            await handler.Handle(new DeleteContainer(Name: containerName.Value));
 
             return 0;
         });

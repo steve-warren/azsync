@@ -9,13 +9,13 @@ public class FileSystem : IFileSystem
         _hash = hash;
     }
 
-    public LocalPath CreatePath(string path, int containerId, string? blobName)
+    public LocalPath CreatePath(string path, int credentialId, string containerUrl, string? blobName)
     {
-        if (IsFile(path)) return new FilePath(path: path, containerId: containerId, blobName: blobName);
-        if (IsDirectory(path)) return new DirectoryPath(path: path, containerId: containerId);
-        if (IsGlob(path)) return new GlobPath(path: path, containerId: containerId);
+        if (IsFile(path)) return new FilePath(path: path, credentialId: credentialId, containerUrl: containerUrl, blobName: blobName);
+        if (IsDirectory(path)) return new DirectoryPath(path: path, credentialId: credentialId, containerUrl: containerUrl);
+        if (IsGlob(path)) return new GlobPath(path: path, credentialId: credentialId, containerUrl: containerUrl);
 
-        return new InvalidPath(path: path, containerId: containerId);
+        return new InvalidPath(path: path, credentialId: credentialId, containerUrl: containerUrl);
     }
 
     public LocalFileInfo? GetFile(LocalPath path)
@@ -24,7 +24,7 @@ public class FileSystem : IFileSystem
 
         if (info.Exists is false) return default;
         
-        return new LocalFileInfo(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerId: path.ContainerId);
+        return new LocalFileInfo(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerUrl: path.ContainerUrl);
     }
 
     public IEnumerable<LocalFileInfo> GetFiles(LocalPath path)
@@ -33,7 +33,7 @@ public class FileSystem : IFileSystem
         {
             var info = new System.IO.FileInfo(file);
 
-            yield return new LocalFileInfo(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerId: path.ContainerId);
+            yield return new LocalFileInfo(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerUrl: path.ContainerUrl);
         }
     }
 
@@ -49,7 +49,7 @@ public class FileSystem : IFileSystem
         {
             var info = new System.IO.FileInfo(file);
 
-            yield return new LocalFileInfo(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerId: path.ContainerId);
+            yield return new LocalFileInfo(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerUrl: path.ContainerUrl);
         }
     }
 

@@ -42,15 +42,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
                 return;
             }
 
-            var container = await _context.AzureContainers.FirstAsync(c => c.Id == path.ContainerId);
-
-            if (container is null)
-            {
-                Console.WriteLine($"Unable to find container '{path.ContainerId}'.");
-                return;
-            }
-
-            var credentials = await _context.AzureCredentials.FirstOrDefaultAsync(c => c.Id == container.CredentialId);
+            var credentials = await _context.AzureCredentials.FirstOrDefaultAsync(c => c.Id == path.CredentialId);
 
             if (credentials is null)
             {
@@ -58,9 +50,9 @@ public class PushHandler : IAsyncCommandHandler<Push>
                 return;
             }
             
-            var serviceClient = new BlobServiceClient(new Uri(container.ContainerUrl), new ClientSecretCredential(tenantId: credentials.Tenant, clientId: credentials.Client, clientSecret: credentials.Secret));
-            var containerClient = serviceClient.GetBlobContainerClient(container.Name);
-
+            var serviceClient = new BlobServiceClient(new Uri(path.ContainerUrl), new ClientSecretCredential(tenantId: credentials.Tenant, clientId: credentials.Client, clientSecret: credentials.Secret));
+            var containerClient = serviceClient.GetBlobContainerClient("");
+            
             await _fileInfoCache.AddAsync(fileInfos);
             await PushNewAsync(path, containerClient);
             await PushModifiedAsync(path, containerClient);
@@ -72,7 +64,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
     {
         foreach (var fileInfo in await _fileInfoCache.GetNewAsync(path.Id))
         {
-            var file = new BlobFile(localFileName: fileInfo.Name, localFilePath: fileInfo.Path, localFilePathHash: fileInfo.PathHash, containerId: fileInfo.ContainerId, localPathId: fileInfo.LocalPathId, blobName: path.PathType == LocalPathType.File.Name ? path.BlobName ?? fileInfo.Name : fileInfo.Name);
+            var file = new BlobFile(localFileName: fileInfo.Name, localFilePath: fileInfo.Path, localFilePathHash: fileInfo.PathHash, localPathId: fileInfo.LocalPathId, blobName: path.PathType == LocalPathType.File.Name ? path.BlobName ?? fileInfo.Name : fileInfo.Name);
 
             try
             {

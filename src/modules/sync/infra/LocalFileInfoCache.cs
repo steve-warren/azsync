@@ -44,8 +44,8 @@ public class LocalFileInfoCache
             using var transaction = await connection.BeginTransactionAsync();
             using var sqlCommand = connection.CreateCommand();
             sqlCommand.CommandText = @$"
-                INSERT INTO {TEMP_STORE_TABLE_NAME}(Path, Name, PathHash, FileSizeInBytes, LastModified, LocalPathId, ContainerId)
-                VALUES($Path, $Name, $PathHash, $FileSizeInBytes, $LastModified, $LocalPathId, $ContainerId)";
+                INSERT INTO {TEMP_STORE_TABLE_NAME}(Path, Name, PathHash, FileSizeInBytes, LastModified, LocalPathId, ContainerUrl)
+                VALUES($Path, $Name, $PathHash, $FileSizeInBytes, $LastModified, $LocalPathId, $ContainerUrl)";
             
             var path = sqlCommand.CreateParameter();
             path.ParameterName = "$Path";
@@ -71,9 +71,9 @@ public class LocalFileInfoCache
             localPathId.ParameterName = "$LocalPathId";
             sqlCommand.Parameters.Add(localPathId);
 
-            var containerId = sqlCommand.CreateParameter();
-            containerId.ParameterName = "$ContainerId";
-            sqlCommand.Parameters.Add(containerId);
+            var containerUrl = sqlCommand.CreateParameter();
+            containerUrl.ParameterName = "$ContainerUrl";
+            sqlCommand.Parameters.Add(containerUrl);
 
             await sqlCommand.PrepareAsync();
 
@@ -85,7 +85,7 @@ public class LocalFileInfoCache
                 size.Value = file.FileSizeInBytes;
                 modified.Value = file.LastModified;
                 localPathId.Value = file.LocalPathId;
-                containerId.Value = file.ContainerId;
+                containerUrl.Value = file.ContainerUrl;
 
                 await sqlCommand.ExecuteNonQueryAsync();
             }
@@ -132,7 +132,7 @@ public class LocalFileInfoCache
             FileSizeInBytes INT NOT NULL,
             LastModified DATETIME NOT NULL,
             LocalPathId INT NOT NULL,
-            ContainerId INT NOT NULL,
+            ContainerUrl INT NOT NULL,
             PRIMARY KEY('Id' AUTOINCREMENT)
         )";
 

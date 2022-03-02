@@ -3,19 +3,17 @@ namespace azpush;
 public class BlobFile
 {
     private BlobFile() { }
-    public BlobFile(string localFileName, string localFilePath, string localFilePathHash, int containerId, int localPathId, string blobName)
+    public BlobFile(string localFileName, string localFilePath, string localFilePathHash, int localPathId, string blobName)
     {
         LocalFileName = localFileName;
         LocalFilePath = localFilePath;
         LocalFilePathHash = localFilePathHash;
-        ContainerId = containerId;
         LocalPathId = localPathId;
         BlobName = blobName;
         State = "Tracked";
     }
 
     public int Id { get; set; }
-    public int ContainerId { get; set; }
     public int LocalPathId { get; set; }
     public string LocalFileName { get; set; } = "";
     public string LocalFilePath { get; set; } = "";
