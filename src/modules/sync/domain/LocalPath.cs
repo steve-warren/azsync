@@ -2,17 +2,19 @@ namespace azpush;
 
 public class LocalPath
 {
-    public LocalPath(string path, string pathType, int containerId)
+    public LocalPath(string path, string pathType, int containerId, string? blobName = default)
     {
         Path = path;
         PathType = pathType;
         ContainerId = containerId;
+        BlobName = blobName;
     }
 
     public int Id { get; private set; }
     public string Path { get; private set; } = "";
     public string PathType { get; private set; }
     public int ContainerId { get; private set; }
+    public string? BlobName { get; set; }
 
     public IEnumerable<LocalFile> GetLocalFiles(IFileSystem fileSystem)
     {

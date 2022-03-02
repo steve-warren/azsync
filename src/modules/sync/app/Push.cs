@@ -62,7 +62,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
             foreach(var fileMetadata in await _localFiles.GetNew(path.Id))
             {
-                var file = new RemoteFile(name: fileMetadata.Name, localFilePath: fileMetadata.Path, localFilePathHash: fileMetadata.PathHash, lastModified: fileMetadata.LastModified, fileSizeInBytes: fileMetadata.FileSizeInBytes, containerId: fileMetadata.ContainerId, localPathId: fileMetadata.LocalPathId);
+                var file = new RemoteFile(localFileName: fileMetadata.Name, localFilePath: fileMetadata.Path, localFilePathHash: fileMetadata.PathHash, lastModified: fileMetadata.LastModified, fileSizeInBytes: fileMetadata.FileSizeInBytes, containerId: fileMetadata.ContainerId, localPathId: fileMetadata.LocalPathId, blobName: path.PathType == LocalPathType.File.Name ? path.BlobName ?? fileMetadata.Name : fileMetadata.Name);
 
                 try
                 {
@@ -71,12 +71,12 @@ public class PushHandler : IAsyncCommandHandler<Push>
                     file.SetContentHash(await new Md5HashAlgorithm().ComputeHashAsync(fileStream));
                     fileStream.Seek(0, SeekOrigin.Begin);
 
-                    Console.Write($"new: {file.Name} ({file.FileSizeInBytes} bytes) ...");
+                    Console.Write($"new: {file.LocalFileName} ({file.FileSizeInBytes} bytes) ...");
 
-                    var blobClient = containerClient.GetBlobClient(file.Name);
+                    var blobClient = containerClient.GetBlobClient(file.BlobName);
                     var blob = await blobClient.UploadAsync(fileStream, overwrite: true);
                 
-                    file.RemoteFilePath = blobClient.Uri.ToString();
+                    file.BlobUrl = blobClient.Uri.ToString();
                     file.Upload(Convert.ToBase64String(blob.Value.ContentHash), DateTimeOffset.Now);
                 }
 
@@ -114,7 +114,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
                     Console.Write($"modified: {fileMetadata.Name} ({file.FileSizeInBytes} bytes) ...");
 
-                    var blobClient = containerClient.GetBlobClient(file.Name);
+                    var blobClient = containerClient.GetBlobClient(file.BlobName);
 
                     var blob = await blobClient.UploadAsync(fileStream, overwrite: true);
                 
@@ -140,7 +140,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
             
             foreach(var file in deletedFiles)
             {
-                Console.Write($"deleted: {file.Name} ({file.FileSizeInBytes} bytes) ...");
+                Console.Write($"deleted: {file.LocalFileName} ({file.FileSizeInBytes} bytes) ...");
 
                 _context.RemoteFiles.Remove(file);
                 await _context.SaveChangesAsync();

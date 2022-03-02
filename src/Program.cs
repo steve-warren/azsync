@@ -74,15 +74,18 @@ app.Command("add", (command) =>
 
     command.Command("path", (command) =>
     {
-        var pathArgument = command.Argument("[path]", "The glob, file, or directory path.");
-        var containerName = command.Argument("[containerName]", "The name of the container the file will be copied.");
+        var pathArgument = command.Argument("[path]", "The glob, file, or directory path which will be copied to blob storage.");
+        var containerName = command.Argument("[container]", "The name of the container to place the blob files.");
+        var remoteFileName = command.Option("-n|--name <BLOB>", "The name for the blob file if path is a file.", CommandOptionType.SingleValue);
 
         command.HelpOption("-?|-h|--help");
 
         command.OnExecute(async () =>
         {
+            var blobName = remoteFileName.HasValue() ? remoteFileName.Value() : null;
+
             using var context = new SyncDbContext();
-            var command = new AddPath(Path: pathArgument.Value, ContainerName: containerName.Value);
+            var command = new AddPath(Path: pathArgument.Value, ContainerName: containerName.Value, BlobName: blobName);
             var handler = new AddPathHandler(new FileSystem(new Md5HashAlgorithm()), context);
             await handler.Handle(command);
             return 0;
@@ -185,7 +188,7 @@ try
     app.Execute(args);
 }
 
-catch(Exception)
+catch(Exception ex)
 {
-    Console.WriteLine("Invalid command, argument, or transient error.");
+    Console.WriteLine("Invalid command, argument, or transient error. " + ex.Message);
 }

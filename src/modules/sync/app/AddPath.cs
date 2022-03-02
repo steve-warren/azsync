@@ -2,12 +2,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace azpush;
 
-/// <summary>
-/// Gathers file information for the specified directory.
-/// </summary>
-/// <param name="DirectoryPath">The path to the directory.</param>
-/// <param name="MaxRecursionDepth"></param>
-public record AddPath(string Path, string ContainerName) : ICommand { }
+public record AddPath(string Path, string ContainerName, string? BlobName) : ICommand { }
 
 public class AddPathHandler : IAsyncCommandHandler<AddPath>
 {
@@ -38,12 +33,17 @@ public class AddPathHandler : IAsyncCommandHandler<AddPath>
             return;
         }
 
+        else if (path.PathType == LocalPathType.File.Name)
+        {
+            path.BlobName = command.BlobName;
+        }
+
         if (_context.LocalPaths.Any(p => p.Path == path.Path) is false)
         {
             _context.LocalPaths.Add(path);
             await _context.SaveChangesAsync();
         }
 
-        Console.WriteLine($"The {path.PathType.ToLowerInvariant()} is now configured to be copied to the {container.Name} container.");
+        Console.WriteLine($"The {path.PathType.ToLowerInvariant()} is now configured to be copied to container {container.Name}.");
     }
 }
