@@ -11,7 +11,7 @@ public class SyncDbContext : DbContext, IUnitOfWork
     }
 
     public DbSet<LocalFileInfo> LocalFiles => Set<LocalFileInfo>();
-    public DbSet<RemoteFile> RemoteFiles => Set<RemoteFile>();
+    public DbSet<BlobFile> BlobFiles => Set<BlobFile>();
     public DbSet<LocalPath> LocalPaths => Set<LocalPath>();
     public DbSet<AzureCredential> AzureCredentials => Set<AzureCredential>();
     public DbSet<AzureContainer> AzureContainers => Set<AzureContainer>();
@@ -45,11 +45,11 @@ public class SyncDbContext : DbContext, IUnitOfWork
                     .HasValue<FilePath>(LocalPathType.File.Name)
                     .HasValue<DirectoryPath>(LocalPathType.Directory.Name);
         
-        modelBuilder.Entity<RemoteFile>()
+        modelBuilder.Entity<BlobFile>()
                     .Property(e => e.LocalFilePathHash).HasColumnName("LocalFilePathHash");
 
-        modelBuilder.Entity<RemoteFile>()
-                    .ToTable("SyncFile")
+        modelBuilder.Entity<BlobFile>()
+                    .ToTable("BlobFile")
                     .HasKey("Id");
     }
 

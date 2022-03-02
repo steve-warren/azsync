@@ -1,9 +1,9 @@
 namespace azpush;
 
-public class RemoteFile
+public class BlobFile
 {
-    private RemoteFile() { }
-    public RemoteFile(string localFileName, string localFilePath, string localFilePathHash, int containerId, int localPathId, string blobName)
+    private BlobFile() { }
+    public BlobFile(string localFileName, string localFilePath, string localFilePathHash, int containerId, int localPathId, string blobName)
     {
         LocalFileName = localFileName;
         LocalFilePath = localFilePath;

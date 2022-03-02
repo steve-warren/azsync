@@ -11,14 +11,14 @@ public class PushHandler : IAsyncCommandHandler<Push>
     private readonly IFileSystem _fileSystem;
     private readonly SyncDbContext _context;
     private readonly LocalFileInfoCache _fileInfoCache;
-    private readonly ISyncFileRepository _syncFiles;
+    private readonly IBlobFileRepository _blobs;
 
-    public PushHandler(IFileSystem fileSystem, SyncDbContext context, LocalFileInfoCache fileInfoCache, ISyncFileRepository syncFiles)
+    public PushHandler(IFileSystem fileSystem, SyncDbContext context, LocalFileInfoCache fileInfoCache, IBlobFileRepository syncFiles)
     {
         _fileSystem = fileSystem;
         _context = context;
         _fileInfoCache = fileInfoCache;
-        _syncFiles = syncFiles;
+        _blobs = syncFiles;
     }
     public async Task Handle(Push command)
     {
@@ -62,17 +62,17 @@ public class PushHandler : IAsyncCommandHandler<Push>
             var containerClient = serviceClient.GetBlobContainerClient(container.Name);
 
             await _fileInfoCache.AddAsync(fileInfos);
-            await PushNew(path, containerClient);
-            await PushModified(path, containerClient);
-            await PushDeleted(path);
+            await PushNewAsync(path, containerClient);
+            await PushModifiedAsync(path, containerClient);
+            await PushDeletedAsync(path);
         }
     }
 
-    private async Task PushNew(LocalPath path, BlobContainerClient containerClient)
+    private async Task PushNewAsync(LocalPath path, BlobContainerClient containerClient)
     {
         foreach (var fileInfo in await _fileInfoCache.GetNewAsync(path.Id))
         {
-            var file = new RemoteFile(localFileName: fileInfo.Name, localFilePath: fileInfo.Path, localFilePathHash: fileInfo.PathHash, containerId: fileInfo.ContainerId, localPathId: fileInfo.LocalPathId, blobName: path.PathType == LocalPathType.File.Name ? path.BlobName ?? fileInfo.Name : fileInfo.Name);
+            var file = new BlobFile(localFileName: fileInfo.Name, localFilePath: fileInfo.Path, localFilePathHash: fileInfo.PathHash, containerId: fileInfo.ContainerId, localPathId: fileInfo.LocalPathId, blobName: path.PathType == LocalPathType.File.Name ? path.BlobName ?? fileInfo.Name : fileInfo.Name);
 
             try
             {
@@ -98,7 +98,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
                 file.Error();
             }
 
-            _syncFiles.Add(file);
+            _blobs.Add(file);
 
             await _context.SaveChangesAsync();
 
@@ -106,9 +106,9 @@ public class PushHandler : IAsyncCommandHandler<Push>
         }
     }
 
-    private async Task PushDeleted(LocalPath path)
+    private async Task PushDeletedAsync(LocalPath path)
     {
-        var deletedFiles = await _syncFiles.GetDeleted(path.Id).ToListAsync();
+        var deletedFiles = await _blobs.GetDeleted(path.Id).ToListAsync();
 
         foreach (var file in deletedFiles)
         {
@@ -116,20 +116,20 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
             file.Delete();
 
-            _context.RemoteFiles.Remove(file);
+            _context.BlobFiles.Remove(file);
             await _context.SaveChangesAsync();
 
             OutputFilePushResultMessage(file: file);
         }
     }
 
-    private async Task PushModified(LocalPath path, BlobContainerClient containerClient)
+    private async Task PushModifiedAsync(LocalPath path, BlobContainerClient containerClient)
     {
         var modifiedFiles = await _fileInfoCache.GetModifiedAsync(path.Id);
 
         foreach (var fileInfo in modifiedFiles)
         {
-            var file = _context.RemoteFiles.First(sf => sf.LocalFilePathHash == fileInfo.PathHash);
+            var file = _context.BlobFiles.First(sf => sf.LocalFilePathHash == fileInfo.PathHash);
 
             try
             {
@@ -161,12 +161,12 @@ public class PushHandler : IAsyncCommandHandler<Push>
         }
     }
 
-    private static void OutputFilePushMessage(string state, RemoteFile file)
+    private static void OutputFilePushMessage(string state, BlobFile file)
     {
         Console.Write($"{state}: {file.LocalFileName} ({file.FileSizeInBytes} bytes) {file.BlobUrl} ...");
     }
 
-    private static void OutputFilePushResultMessage(RemoteFile file)
+    private static void OutputFilePushResultMessage(BlobFile file)
     {
         if (file.State == "Error")
             Console.WriteLine("ERR 😬");
