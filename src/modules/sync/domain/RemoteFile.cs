@@ -3,13 +3,11 @@ namespace azpush;
 public class RemoteFile
 {
     private RemoteFile() { }
-    public RemoteFile(string localFileName, string localFilePath, string localFilePathHash, DateTime lastModified, long fileSizeInBytes, int containerId, int localPathId, string blobName)
+    public RemoteFile(string localFileName, string localFilePath, string localFilePathHash, int containerId, int localPathId, string blobName)
     {
         LocalFileName = localFileName;
         LocalFilePath = localFilePath;
         LocalFilePathHash = localFilePathHash;
-        LastModified = lastModified;
-        FileSizeInBytes = fileSizeInBytes;
         ContainerId = containerId;
         LocalPathId = localPathId;
         BlobName = blobName;
@@ -22,17 +20,15 @@ public class RemoteFile
     public string LocalFileName { get; set; } = "";
     public string LocalFilePath { get; set; } = "";
     public string LocalFilePathHash { get; set; } = "";
-    public string? BlobUrl { get; set; }
-    public string BlobName { get; set; } = "";
-    public DateTime LastModified { get; set; }
+    public string? BlobUrl { get; private set; }
+    public string BlobName { get; private set; } = "";
+    public DateTime LastModified { get; private set; }
     public DateTimeOffset? LastUpload { get; set; }
-    public long FileSizeInBytes { get; set; }
-    public string ContentHash { get; set; } = "";
+    public long FileSizeInBytes { get; private set; }
+    public string ContentHash { get; private set; } = "";
     public string State { get; set; } = "";
 
-    public void SetContentHash(string contentHash) => ContentHash = contentHash;
-
-    public void Upload(string blobContentHash, DateTimeOffset now)
+    public void Upload(string blobUrl, string blobContentHash, DateTimeOffset timestamp)
     {
         if (string.Equals(blobContentHash, ContentHash, StringComparison.OrdinalIgnoreCase) is false)
             State = "Error";
@@ -40,8 +36,16 @@ public class RemoteFile
         else
         {
             State = "Uploaded";
-            LastUpload = now;
+            LastUpload = timestamp;
+            BlobUrl = blobUrl;
         }
+    }
+
+    public void Modify(DateTime lastModified, long fileSizeInBytes, string contentHash)
+    {
+        LastModified = lastModified;
+        FileSizeInBytes = fileSizeInBytes;
+        ContentHash = contentHash;
     }
 
     public void Error()
@@ -49,8 +53,8 @@ public class RemoteFile
         State = "Error";
     }
 
-    public void NotFound()
+    public void Delete()
     {
-        State = "NotFound";
+        State = "Deleted";
     }
 }

@@ -2,8 +2,9 @@ namespace azpush;
 
 public interface IFileSystem
 {
-    LocalPath CreatePath(string path, int containerId);
-    LocalFile? GetFile(LocalPath path);
-    IEnumerable<LocalFile> GetFiles(LocalPath path);
-    IEnumerable<LocalFile> Glob(LocalPath path);
+    LocalPath CreatePath(string path, int containerId, string? blobName);
+    LocalFileInfo? GetFile(LocalPath path);
+    IEnumerable<LocalFileInfo> GetFiles(LocalPath path);
+    IEnumerable<LocalFileInfo> Glob(LocalPath path);
+    Stream OpenFile(string path);
 }

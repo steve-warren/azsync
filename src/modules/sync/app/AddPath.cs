@@ -25,17 +25,12 @@ public class AddPathHandler : IAsyncCommandHandler<AddPath>
             return;
         }
 
-        var path = _fs.CreatePath(command.Path, container.Id);
+        var path = _fs.CreatePath(command.Path, container.Id, command.BlobName);
 
         if (path.PathType == LocalPathType.Invalid.Name)
         {
             Console.WriteLine("Invalid glob, file, or directory path.");
             return;
-        }
-
-        else if (path.PathType == LocalPathType.File.Name)
-        {
-            path.BlobName = command.BlobName;
         }
 
         if (_context.LocalPaths.Any(p => p.Path == path.Path) is false)

@@ -9,56 +9,53 @@ public class FileSystem : IFileSystem
         _hash = hash;
     }
 
-    public LocalPath CreatePath(string path, int containerId)
+    public LocalPath CreatePath(string path, int containerId, string? blobName)
     {
-        var type = LocalPathType.Invalid;
+        if (IsFile(path)) return new FilePath(path: path, containerId: containerId, blobName: blobName);
+        if (IsDirectory(path)) return new DirectoryPath(path: path, containerId: containerId);
+        if (IsGlob(path)) return new GlobPath(path: path, containerId: containerId);
 
-        var isGlob = IsGlob(path);
-        var isFile = IsFile(path);
-        var isDirectory = IsDirectory(path);
-        var isInvalid = !(isFile ^ isDirectory ^ isGlob);
-        
-        if (isInvalid) type = LocalPathType.Invalid;
-        else if (isFile) type = LocalPathType.File;
-        else if (isDirectory) type = LocalPathType.Directory;
-        else if (isGlob) type = LocalPathType.Glob;
-
-        return new LocalPath(path, type.Name, containerId);
+        return new InvalidPath(path: path, containerId: containerId);
     }
 
-    public LocalFile? GetFile(LocalPath path)
+    public LocalFileInfo? GetFile(LocalPath path)
     {
-        var info = new FileInfo(path.Path);
+        var info = new System.IO.FileInfo(path.Path);
 
         if (info.Exists is false) return default;
         
-        return new LocalFile(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerId: path.ContainerId);
+        return new LocalFileInfo(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerId: path.ContainerId);
     }
 
-    public IEnumerable<LocalFile> GetFiles(LocalPath path)
+    public IEnumerable<LocalFileInfo> GetFiles(LocalPath path)
     {
         foreach(var file in Directory.EnumerateFiles(path: path.Path))
         {
-            var info = new FileInfo(file);
+            var info = new System.IO.FileInfo(file);
 
-            yield return new LocalFile(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerId: path.ContainerId);
+            yield return new LocalFileInfo(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerId: path.ContainerId);
         }
     }
 
-    public IEnumerable<LocalFile> Glob(LocalPath path)
+    public IEnumerable<LocalFileInfo> Glob(LocalPath path)
     {
         var globInfo = new FileInfo(path.Path);
         var fullPath = globInfo.DirectoryName;
         var pattern = globInfo.Name;
 
         var files = Directory.EnumerateFiles(path: fullPath!, searchPattern: pattern);
-
+        
         foreach(var file in files)
         {
-            var info = new FileInfo(file);
+            var info = new System.IO.FileInfo(file);
 
-            yield return new LocalFile(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerId: path.ContainerId);
+            yield return new LocalFileInfo(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerId: path.ContainerId);
         }
+    }
+
+    public Stream OpenFile(string path)
+    {
+        return new FileStream(path: path, mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read, bufferSize: 4096, useAsync: true);
     }
 
     private static bool IsGlob(string path) => path.LastIndexOfAny(new[] { '*', '?' }) != -1;

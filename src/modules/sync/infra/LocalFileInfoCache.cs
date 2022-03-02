@@ -3,29 +3,48 @@ namespace azpush;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 
-public class LocalFileRepository
+public class LocalFileInfoCache
 {
+    private const string TEMP_STORE_TABLE_NAME = "LocalFileInfo";
+
     private readonly SyncDbContext _context;
 
-    public LocalFileRepository(SyncDbContext context)
+    public LocalFileInfoCache(SyncDbContext context)
     {
         _context = context;
     }
 
-    public void ReplaceAll(IEnumerable<LocalFile> files)
+    public async Task PrepareAsync()
     {
         var connection = _context.Database.GetDbConnection();
 
         try
         {
-            connection.Open();
+            await connection.OpenAsync();
 
-            CreateTempTable(connection);
+            await SetInMemoryTempStoreAsync(connection);
+            await DropTempTableAsync(connection);
+            await CreateTempTableAsync(connection);
+        }
 
-            using var transaction = connection.BeginTransaction();
+        finally
+        {
+            await connection.CloseAsync();
+        }
+    }
+
+    public async Task AddAsync(IEnumerable<LocalFileInfo> files)
+    {
+        var connection = _context.Database.GetDbConnection();
+
+        try
+        {
+            await connection.OpenAsync();
+
+            using var transaction = await connection.BeginTransactionAsync();
             using var sqlCommand = connection.CreateCommand();
-            sqlCommand.CommandText = @"
-                INSERT INTO LocalFile(Path, Name, PathHash, FileSizeInBytes, LastModified, LocalPathId, ContainerId)
+            sqlCommand.CommandText = @$"
+                INSERT INTO {TEMP_STORE_TABLE_NAME}(Path, Name, PathHash, FileSizeInBytes, LastModified, LocalPathId, ContainerId)
                 VALUES($Path, $Name, $PathHash, $FileSizeInBytes, $LastModified, $LocalPathId, $ContainerId)";
             
             var path = sqlCommand.CreateParameter();
@@ -56,7 +75,7 @@ public class LocalFileRepository
             containerId.ParameterName = "$ContainerId";
             sqlCommand.Parameters.Add(containerId);
 
-            sqlCommand.Prepare();
+            await sqlCommand.PrepareAsync();
 
             foreach(var file in files)
             {
@@ -68,19 +87,19 @@ public class LocalFileRepository
                 localPathId.Value = file.LocalPathId;
                 containerId.Value = file.ContainerId;
 
-                sqlCommand.ExecuteNonQuery();
+                await sqlCommand.ExecuteNonQueryAsync();
             }
 
-            transaction.Commit();
+            await transaction.CommitAsync();
         }
 
         finally
         {
-            connection.Close();
+            await connection.CloseAsync();
         }
     }
 
-    public Task<List<LocalFile>> GetNew(int pathId)
+    public Task<List<LocalFileInfo>> GetNewAsync(int pathId)
     {
         var query = from lf in _context.LocalFiles
                     join sf in _context.RemoteFiles on lf.PathHash equals sf.LocalFilePathHash into group_join
@@ -91,23 +110,20 @@ public class LocalFileRepository
         return query.ToListAsync();
     }
 
-    public IQueryable<LocalFile> GetModified(int pathId)
+    public Task<List<LocalFileInfo>> GetModifiedAsync(int pathId)
     {
         var query = from lf in _context.LocalFiles
                     join sf in _context.RemoteFiles on lf.PathHash equals sf.LocalFilePathHash
                     where lf.LocalPathId == pathId && lf.LastModified > sf.LastModified
                     select lf;
 
-        return query;
+        return query.ToListAsync();
     }
 
-    private static void CreateTempTable(DbConnection connection)
+    private static async Task CreateTempTableAsync(DbConnection connection)
     {
         using var command = connection.CreateCommand();
-        command.CommandText = @"
-        PRAGMA temp_store=MEMORY;PRAGMA temp_store;
-        DROP TABLE IF EXISTS LocalFile;
-        CREATE TEMP TABLE IF NOT EXISTS LocalFile
+        command.CommandText = @$"CREATE TEMP TABLE IF NOT EXISTS {TEMP_STORE_TABLE_NAME}
         (
             Id INTEGER NOT NULL,
             Path VARCHAR(256) NOT NULL,
@@ -120,6 +136,20 @@ public class LocalFileRepository
             PRIMARY KEY('Id' AUTOINCREMENT)
         )";
 
-        command.ExecuteNonQuery();
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task SetInMemoryTempStoreAsync(DbConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = @"PRAGMA temp_store=MEMORY;PRAGMA temp_store;";
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task DropTempTableAsync(DbConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = @$"DROP TABLE IF EXISTS {TEMP_STORE_TABLE_NAME};";
+        await command.ExecuteNonQueryAsync();
     }
 }
