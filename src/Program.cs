@@ -60,6 +60,7 @@ app.Command("add", (command) =>
         var containerUrl = command.Argument("[containerUrl]", "The url of the blob storage container to place the blob files. The url may contain a virtual directory path.");
         var credential = command.Argument("[credential]", "The name of the credentials used to authenticate with this blob storage container.");
         var remoteFileName = command.Option("-n|--name <BLOB>", "The name for the blob file if path is a file.", CommandOptionType.SingleValue);
+        var includeTimestamp = command.Option("-t|--timestamp <TIMESTAMP>", "Append a UTC-formatted timestamp to the blob file name.", CommandOptionType.NoValue);
 
         command.HelpOption("-?|-h|--help");
 
@@ -68,7 +69,7 @@ app.Command("add", (command) =>
             var blobName = remoteFileName.HasValue() ? remoteFileName.Value() : null;
 
             using var context = new SyncDbContext();
-            var command = new AddPath(Path: pathArgument.Value, CredentialName: credential.Value, ContainerUrl: containerUrl.Value, BlobName: blobName);
+            var command = new AddPath(Path: pathArgument.Value, CredentialName: credential.Value, ContainerUrl: containerUrl.Value, BlobName: blobName, IncludeTimestamp: includeTimestamp.HasValue());
             var handler = new AddPathHandler(new FileSystem(new Md5HashAlgorithm()), context, new AzureCredentialRepository(context));
             await handler.Handle(command);
             return 0;
@@ -145,4 +146,7 @@ try
 catch(Exception ex)
 {
     Console.WriteLine("Invalid command, argument, or transient error. " + ex.Message);
+    return 1;
 }
+
+return 0;

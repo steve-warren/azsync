@@ -76,7 +76,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
                 fileStream.Position = 0;
 
-                var blobClient = containerClient.GetBlobClient(file.BlobName);
+                var blobClient = containerClient.GetBlobClient(path.IncludeTimestamp ? file.GetFormattedBlobName(fileInfo.LastModified) : file.BlobName);
 
                 OutputFilePushMessage(state: "new", file: file);
 
@@ -135,7 +135,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
                 fileStream.Position = 0;
 
-                var blobClient = containerClient.GetBlobClient(file.BlobName);
+                var blobClient = containerClient.GetBlobClient(path.IncludeTimestamp ? file.GetFormattedBlobName(fileInfo.LastModified) : file.BlobName);
                 var blob = await blobClient.UploadAsync(fileStream, overwrite: true);
 
                 file.Upload(blobUrl: blobClient.Uri.ToString(), blobContentHash: Convert.ToBase64String(blob.Value.ContentHash), timestamp: DateTimeOffset.Now);
@@ -161,9 +161,9 @@ public class PushHandler : IAsyncCommandHandler<Push>
     private static void OutputFilePushResultMessage(BlobFile file)
     {
         if (file.State == "Error")
-            Console.WriteLine("ERR 😬");
+            Console.WriteLine("ERR.");
 
         else if (file.State == "Uploaded" || file.State == "Deleted")
-            Console.WriteLine("OK. 🙌");
+            Console.WriteLine("OK.");
     }
 }

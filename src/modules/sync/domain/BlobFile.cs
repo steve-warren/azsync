@@ -26,6 +26,15 @@ public class BlobFile
     public string ContentHash { get; private set; } = "";
     public string State { get; set; } = "";
 
+    public string GetFormattedBlobName(DateTime timestamp)
+    {
+        var charIndex = BlobName.LastIndexOf('.');
+
+        if (charIndex == -1) return $"{BlobName}-{timestamp:yyyy-MM-dd}";
+
+        return BlobName.Insert(charIndex, $"-{timestamp:yyyy-MM-dd}");
+    }
+
     public void Upload(string blobUrl, string blobContentHash, DateTimeOffset timestamp)
     {
         if (string.Equals(blobContentHash, ContentHash, StringComparison.OrdinalIgnoreCase) is false)

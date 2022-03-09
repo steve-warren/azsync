@@ -9,18 +9,18 @@ public class FileSystem : IFileSystem
         _hash = hash;
     }
 
-    public LocalPath CreatePath(string path, int credentialId, string containerUrl, string? blobName)
+    public LocalPath CreatePath(string path, int credentialId, string containerUrl, string? blobName, bool includeTimestamp)
     {
-        if (IsFile(path)) return new FilePath(path: path, credentialId: credentialId, containerUrl: containerUrl, blobName: blobName);
-        if (IsDirectory(path)) return new DirectoryPath(path: path, credentialId: credentialId, containerUrl: containerUrl);
-        if (IsGlob(path)) return new GlobPath(path: path, credentialId: credentialId, containerUrl: containerUrl);
+        if (IsFile(path)) return new FilePath(path: path, credentialId: credentialId, containerUrl: containerUrl, blobName: blobName, includeTimestamp: includeTimestamp);
+        if (IsDirectory(path)) return new DirectoryPath(path: path, credentialId: credentialId, containerUrl: containerUrl, includeTimestamp: includeTimestamp);
+        if (IsGlob(path)) return new GlobPath(path: path, credentialId: credentialId, containerUrl: containerUrl, includeTimestamp: includeTimestamp);
 
         return new InvalidPath(path: path, credentialId: credentialId, containerUrl: containerUrl);
     }
 
     public LocalFileInfo? GetFile(LocalPath path)
     {
-        var info = new System.IO.FileInfo(path.Path);
+        var info = new FileInfo(path.Path);
 
         if (info.Exists is false) return default;
         
@@ -31,7 +31,7 @@ public class FileSystem : IFileSystem
     {
         foreach(var file in Directory.EnumerateFiles(path: path.Path))
         {
-            var info = new System.IO.FileInfo(file);
+            var info = new FileInfo(file);
 
             yield return new LocalFileInfo(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerUrl: path.ContainerUrl);
         }
@@ -47,7 +47,7 @@ public class FileSystem : IFileSystem
         
         foreach(var file in files)
         {
-            var info = new System.IO.FileInfo(file);
+            var info = new FileInfo(file);
 
             yield return new LocalFileInfo(Path: info.FullName, Name: info.Name, LastModified: info.LastWriteTime, PathHash: _hash.ComputeHash(info.FullName), FileSizeInBytes: info.Length, LocalPathId: path.Id, ContainerUrl: path.ContainerUrl);
         }

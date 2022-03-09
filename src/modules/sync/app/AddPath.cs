@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace azpush;
 
-public record AddPath(string Path, string CredentialName, string ContainerUrl, string? BlobName) : ICommand { }
+public record AddPath(string Path, string CredentialName, string ContainerUrl, string? BlobName, bool IncludeTimestamp) : ICommand { }
 
 public class AddPathHandler : IAsyncCommandHandler<AddPath>
 {
@@ -28,7 +28,7 @@ public class AddPathHandler : IAsyncCommandHandler<AddPath>
             return;
         }
 
-        var path = _fs.CreatePath(path: command.Path, credentialId: credential.Id, containerUrl: command.ContainerUrl, blobName: command.BlobName);
+        var path = _fs.CreatePath(path: command.Path, credentialId: credential.Id, containerUrl: command.ContainerUrl, blobName: command.BlobName, includeTimestamp: command.IncludeTimestamp);
 
         if (path.PathType == LocalPathType.Invalid.Name)
         {
