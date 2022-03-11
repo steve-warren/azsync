@@ -12,13 +12,15 @@ public class PushHandler : IAsyncCommandHandler<Push>
     private readonly SyncDbContext _context;
     private readonly LocalFileInfoCache _fileInfoCache;
     private readonly IBlobFileRepository _blobs;
+    private readonly IStringProtector _protector;
 
-    public PushHandler(IFileSystem fileSystem, SyncDbContext context, LocalFileInfoCache fileInfoCache, IBlobFileRepository syncFiles)
+    public PushHandler(IFileSystem fileSystem, SyncDbContext context, LocalFileInfoCache fileInfoCache, IBlobFileRepository syncFiles, IStringProtector protector)
     {
         _fileSystem = fileSystem;
         _context = context;
         _fileInfoCache = fileInfoCache;
         _blobs = syncFiles;
+        _protector = protector;
     }
     public async Task Handle(Push command)
     {
@@ -50,7 +52,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
                 return;
             }
             
-            var serviceClient = new BlobServiceClient(new Uri(path.ContainerUrl), new ClientSecretCredential(tenantId: credentials.Tenant, clientId: credentials.Client, clientSecret: credentials.Secret));
+            var serviceClient = new BlobServiceClient(new Uri(path.ContainerUrl), new ClientSecretCredential(tenantId: credentials.Tenant, clientId: credentials.Client, clientSecret: credentials.GetSecret(_protector)));
             var containerClient = serviceClient.GetBlobContainerClient("");
             
             await _fileInfoCache.AddAsync(fileInfos);
@@ -85,8 +87,9 @@ public class PushHandler : IAsyncCommandHandler<Push>
                 file.Upload(blobUrl: blobClient.Uri.ToString(), blobContentHash: Convert.ToBase64String(blob.Value.ContentHash), timestamp: DateTimeOffset.Now);
             }
 
-            catch (Exception)
+            catch (Exception ex)
             {
+                OutputErrorMessage(ex);
                 file.Error();
             }
 
@@ -143,8 +146,8 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
             catch (Exception ex)
             {
+                OutputErrorMessage(ex);
                 file.Error();
-                Console.WriteLine(ex.Message);
             }
 
             await _context.SaveChangesAsync();
@@ -165,5 +168,11 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
         else if (file.State == "Uploaded" || file.State == "Deleted")
             Console.WriteLine("OK.");
+    }
+
+    private static void OutputErrorMessage(Exception ex)
+    {
+        Console.Write("\t");
+        Console.WriteLine(ex.Message);
     }
 }

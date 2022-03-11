@@ -15,7 +15,7 @@ app.Command("push", (command) =>
     command.OnExecute(async () =>
         {
             var context = new SyncDbContext();
-            var handler = new PushHandler(new FileSystem(new Md5HashAlgorithm()), context, new LocalFileInfoCache(context), new BlobFileRepository(context));
+            var handler = new PushHandler(new FileSystem(new Md5HashAlgorithm()), context, new LocalFileInfoCache(context), new BlobFileRepository(context), new WindowsStringProtector());
 
             await handler.Handle(new Push());
             return 0;
