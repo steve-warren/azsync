@@ -12,11 +12,13 @@ public class LoginWithCredentialHandler : IAsyncCommandHandler<LoginWithCredenti
 
     private readonly IAzureCredentialRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IStringProtector _protector;
 
-    public LoginWithCredentialHandler(IAzureCredentialRepository repository, IUnitOfWork unitOfWork)
+    public LoginWithCredentialHandler(IAzureCredentialRepository repository, IUnitOfWork unitOfWork, IStringProtector protector)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
+        _protector = protector;
     }
 
     public async Task Handle(LoginWithCredential command)
@@ -30,13 +32,14 @@ public class LoginWithCredentialHandler : IAsyncCommandHandler<LoginWithCredenti
             if (credentials is not null)
             {
                 credentials.Client = command.Client;
-                credentials.Secret = command.Secret;
                 credentials.Tenant = command.Tenant;
+                credentials.SetSecret(command.Secret, _protector);
             }
 
             else
             {
-                credentials = new AzureCredential(name: command.Name, tenant: command.Tenant, client: command.Client, secret: command.Secret);
+                credentials = new AzureCredential(name: command.Name, tenant: command.Tenant, client: command.Client);
+                credentials.SetSecret(command.Secret, _protector);
                 _repository.Add(credentials);
             }
 

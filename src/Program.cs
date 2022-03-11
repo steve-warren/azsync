@@ -42,7 +42,7 @@ app.Command("set", (command) =>
             var command = new LoginWithCredential(Name: name.Value(), Tenant: tenantOption.Value(), Client: clientOption.Value(), Secret: clientSecret.Value());
             using var context = new SyncDbContext();
             
-            var handler = new LoginWithCredentialHandler(new AzureCredentialRepository(context), context);
+            var handler = new LoginWithCredentialHandler(new AzureCredentialRepository(context), context, new WindowsStringProtector());
             await handler.Handle(command);
 
             return 0;
