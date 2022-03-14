@@ -4,7 +4,7 @@ namespace azpush;
 
 public record AddPath(string Path, string CredentialName, string ContainerUrl, string? BlobName, bool IncludeTimestamp) : ICommand { }
 
-public class AddPathHandler : IAsyncCommandHandler<AddPath>
+public class AddPathHandler : IAsyncCommandHandler<AddPath, int>
 {
     private readonly IFileSystem _fs;
     private readonly SyncDbContext _context;
@@ -18,22 +18,27 @@ public class AddPathHandler : IAsyncCommandHandler<AddPath>
         _credentials = credentials;
     }
 
-    public async Task Handle(AddPath command)
+    public async Task<int> Handle(AddPath command)
     {
         var credential = await _credentials.GetByNameAsync(command.CredentialName);
 
         if (credential is null)
         {
             Console.WriteLine($"Cannot find credental '{command.CredentialName}'.");
-            return;
+            return AppConstants.ERROR_EXIT_CODE;
         }
 
-        var path = _fs.CreatePath(path: command.Path, credentialId: credential.Id, containerUrl: command.ContainerUrl, blobName: command.BlobName, includeTimestamp: command.IncludeTimestamp);
+        var formattedUrl = command.ContainerUrl;
+
+        if (command.ContainerUrl[^1] != '/')
+            formattedUrl = command.ContainerUrl + "/";
+
+        var path = _fs.CreatePath(path: command.Path, credentialId: credential.Id, containerUrl: formattedUrl, blobName: command.BlobName, includeTimestamp: command.IncludeTimestamp);
 
         if (path.PathType == LocalPathType.Invalid.Name)
         {
-            Console.WriteLine("Invalid glob, file, or directory path.");
-            return;
+            Console.WriteLine($"{path.Path} is an invalid glob, file, or directory path.");
+            return AppConstants.ERROR_EXIT_CODE;
         }
 
         if (_context.LocalPaths.Any(p => p.Path == path.Path) is false)
@@ -42,6 +47,7 @@ public class AddPathHandler : IAsyncCommandHandler<AddPath>
             await _context.SaveChangesAsync();
         }
 
-        Console.WriteLine($"The {path.PathType.ToLowerInvariant()} is now configured to be copied to container {command.ContainerUrl}.");
+        Console.WriteLine($"{path.Path} will be copied to {path.ContainerUrl}.");
+        return AppConstants.OK_EXIT_CODE;
     }
 }

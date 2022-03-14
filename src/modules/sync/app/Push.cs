@@ -6,7 +6,7 @@ namespace azpush;
 
 public record Push : ICommand { }
 
-public class PushHandler : IAsyncCommandHandler<Push>
+public class PushHandler : IAsyncCommandHandler<Push, int>
 {
     private readonly IFileSystem _fileSystem;
     private readonly SyncDbContext _context;
@@ -22,7 +22,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
         _blobs = syncFiles;
         _protector = protector;
     }
-    public async Task Handle(Push command)
+    public async Task<int> Handle(Push command)
     {
         await _fileInfoCache.PrepareAsync();
 
@@ -41,7 +41,7 @@ public class PushHandler : IAsyncCommandHandler<Push>
             catch (Exception)
             {
                 Console.WriteLine("Unable to read from file system. Ensure this process has the correct permissions set.");
-                return;
+                return AppConstants.ERROR_EXIT_CODE;
             }
 
             var credentials = await _context.AzureCredentials.FirstOrDefaultAsync(c => c.Id == path.CredentialId);
@@ -49,20 +49,23 @@ public class PushHandler : IAsyncCommandHandler<Push>
             if (credentials is null)
             {
                 Console.WriteLine($"Unable to find credentials.");
-                return;
+                return AppConstants.ERROR_EXIT_CODE;
             }
             
-            var serviceClient = new BlobServiceClient(new Uri(path.ContainerUrl), new ClientSecretCredential(tenantId: credentials.Tenant, clientId: credentials.Client, clientSecret: credentials.GetSecret(_protector)));
-            var containerClient = serviceClient.GetBlobContainerClient("");
+            var blobCredentials = new ClientSecretCredential(tenantId: credentials.Tenant, clientId: credentials.Client, clientSecret: credentials.GetSecret(_protector));
             
             await _fileInfoCache.AddAsync(fileInfos);
-            await PushNewAsync(path, containerClient);
-            await PushModifiedAsync(path, containerClient);
-            await PushDeletedAsync(path);
+            await PushNewAsync(path, blobCredentials);
+            await PushModifiedAsync(path, blobCredentials);
+            var deletedCount = await PushDeletedAsync(path);
+
+            if (deletedCount > 0) return AppConstants.ERROR_EXIT_CODE;
         }
+
+        return AppConstants.OK_EXIT_CODE;
     }
 
-    private async Task PushNewAsync(LocalPath path, BlobContainerClient containerClient)
+    private async Task PushNewAsync(LocalPath path, ClientSecretCredential credentials)
     {
         foreach (var fileInfo in await _fileInfoCache.GetNewAsync(path.Id))
         {
@@ -78,9 +81,11 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
                 fileStream.Position = 0;
 
-                var blobClient = containerClient.GetBlobClient(path.IncludeTimestamp ? file.GetFormattedBlobName(fileInfo.LastModified) : file.BlobName);
+                var blobName = path.IncludeTimestamp ? file.GetFormattedBlobName(fileInfo.LastModified) : file.BlobName;
+                var url = new Uri(path.ContainerUrl + blobName);
+                var blobClient = new BlobClient(url, credentials);
 
-                OutputFilePushMessage(state: "new", file: file);
+                OutputFilePushMessage(state: "new", file: file, url: url.ToString());
 
                 var blob = await blobClient.UploadAsync(fileStream, overwrite: true);
 
@@ -101,13 +106,14 @@ public class PushHandler : IAsyncCommandHandler<Push>
         }
     }
 
-    private async Task PushDeletedAsync(LocalPath path)
+    private async Task<int> PushDeletedAsync(LocalPath path)
     {
         var deletedFiles = await _blobs.GetDeleted(path.Id).ToListAsync();
+        var deletedCount = deletedFiles.Count;
 
         foreach (var file in deletedFiles)
         {
-            OutputFilePushMessage(state: "deleted", file: file);
+            OutputFilePushMessage(state: "deleted", file: file, url: file.BlobUrl);
 
             file.Delete();
 
@@ -116,9 +122,11 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
             OutputFilePushResultMessage(file: file);
         }
+
+        return deletedCount;
     }
 
-    private async Task PushModifiedAsync(LocalPath path, BlobContainerClient containerClient)
+    private async Task PushModifiedAsync(LocalPath path, ClientSecretCredential credentials)
     {
         var modifiedFiles = await _fileInfoCache.GetModifiedAsync(path.Id);
 
@@ -134,11 +142,13 @@ public class PushHandler : IAsyncCommandHandler<Push>
 
                 file.Modify(lastModified: fileInfo.LastModified, fileSizeInBytes: fileInfo.FileSizeInBytes, contentHash: contentHash);
 
-                OutputFilePushMessage(state: "modified", file: file);
+                OutputFilePushMessage(state: "modified", file: file, url: file.BlobUrl);
 
                 fileStream.Position = 0;
 
-                var blobClient = containerClient.GetBlobClient(path.IncludeTimestamp ? file.GetFormattedBlobName(fileInfo.LastModified) : file.BlobName);
+                var blobName = path.IncludeTimestamp ? file.GetFormattedBlobName(fileInfo.LastModified) : file.BlobName;
+                var url = new Uri(path.ContainerUrl + blobName);
+                var blobClient = new BlobClient(url, credentials);
                 var blob = await blobClient.UploadAsync(fileStream, overwrite: true);
 
                 file.Upload(blobUrl: blobClient.Uri.ToString(), blobContentHash: Convert.ToBase64String(blob.Value.ContentHash), timestamp: DateTimeOffset.Now);
@@ -156,9 +166,9 @@ public class PushHandler : IAsyncCommandHandler<Push>
         }
     }
 
-    private static void OutputFilePushMessage(string state, BlobFile file)
+    private static void OutputFilePushMessage(string state, BlobFile file, string url)
     {
-        Console.Write($"{state}: {file.LocalFileName} ({file.FileSizeInBytes} bytes) {file.BlobUrl} ...");
+        Console.Write($"{state}: {file.LocalFilePath} ({file.FileSizeInBytes} bytes) {url} ...");
     }
 
     private static void OutputFilePushResultMessage(BlobFile file)

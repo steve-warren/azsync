@@ -1,12 +1,11 @@
 using Azure.Core;
 using Azure.Identity;
-using Microsoft.Identity.Client;
 
 namespace azpush;
 
 public record LoginWithCredential(string Name, string Tenant, string Client, string Secret) : ICommand { }
 
-public class LoginWithCredentialHandler : IAsyncCommandHandler<LoginWithCredential>
+public class LoginWithCredentialHandler : IAsyncCommandHandler<LoginWithCredential, int>
 {
     const string AZURE_REQUEST_CONTEXT_SCOPE = "https://graph.microsoft.com/.default";
 
@@ -21,7 +20,7 @@ public class LoginWithCredentialHandler : IAsyncCommandHandler<LoginWithCredenti
         _protector = protector;
     }
 
-    public async Task Handle(LoginWithCredential command)
+    public async Task<int> Handle(LoginWithCredential command)
     {
         AuthenticationResult authenticationResult = await AuthenticateAsync(new ClientSecretCredential(tenantId: command.Tenant, clientId: command.Client, clientSecret: command.Secret));
 
@@ -44,15 +43,15 @@ public class LoginWithCredentialHandler : IAsyncCommandHandler<LoginWithCredenti
             }
 
             await _unitOfWork.SaveChangesAsync();
+            return AppConstants.OK_EXIT_CODE;
         }
 
-        else
-        {
-            DisplayErrorMessage(authenticationResult);
-        }
+         OutputErrorMessage(authenticationResult);
+
+        return AppConstants.ERROR_EXIT_CODE;
     }
 
-    private static void DisplayErrorMessage(AuthenticationResult authenticationResult)
+    private static void OutputErrorMessage(AuthenticationResult authenticationResult)
     {
         if (authenticationResult == AuthenticationResult.InvalidClientIdentifier) Console.WriteLine("Invalid client identifier.");
         else if (authenticationResult == AuthenticationResult.InvalidClientSecret) Console.WriteLine("Invalid client secret.");

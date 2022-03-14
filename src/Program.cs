@@ -17,8 +17,7 @@ app.Command("push", (command) =>
             var context = new SyncDbContext();
             var handler = new PushHandler(new FileSystem(new Md5HashAlgorithm()), context, new LocalFileInfoCache(context), new BlobFileRepository(context), new WindowsStringProtector());
 
-            await handler.Handle(new Push());
-            return 0;
+            return await handler.Handle(new Push());
         });
 });
 
@@ -71,8 +70,7 @@ app.Command("add", (command) =>
             using var context = new SyncDbContext();
             var command = new AddPath(Path: pathArgument.Value, CredentialName: credential.Value, ContainerUrl: containerUrl.Value, BlobName: blobName, IncludeTimestamp: includeTimestamp.HasValue());
             var handler = new AddPathHandler(new FileSystem(new Md5HashAlgorithm()), context, new AzureCredentialRepository(context));
-            await handler.Handle(command);
-            return 0;
+            return await handler.Handle(command);
         });
     });
 });
@@ -140,7 +138,7 @@ app.Command("remove", (command) =>
 
 try
 {
-    app.Execute(args);
+    return app.Execute(args);
 }
 
 catch(Exception ex)
@@ -148,5 +146,3 @@ catch(Exception ex)
     Console.WriteLine("Invalid command, argument, or transient error. " + ex.Message);
     return 1;
 }
-
-return 0;
