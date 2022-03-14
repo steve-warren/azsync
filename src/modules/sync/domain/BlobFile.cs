@@ -30,9 +30,9 @@ public class BlobFile
     {
         var charIndex = BlobName.LastIndexOf('.');
 
-        if (charIndex == -1) return $"{BlobName}-{timestamp:yyyy-MM-dd}";
+        if (charIndex == -1) return $"{BlobName}__{timestamp:yyyyMMdd}";
 
-        return BlobName.Insert(charIndex, $"-{timestamp:yyyy-MM-dd}");
+        return BlobName.Insert(charIndex, $"__{timestamp:yyyyMMdd}");
     }
 
     public void Upload(string blobUrl, string blobContentHash, DateTimeOffset timestamp)
